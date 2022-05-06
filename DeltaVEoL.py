@@ -47,7 +47,7 @@ new_dry_mass = 1000
 
 
 counter = 0
-limit = 1000
+limit = 10
 iteration_n = np.arange(1, limit+1, 1)
 mass_variation = np.ones(len(iteration_n))
 # Delta v computation
@@ -57,6 +57,8 @@ a = np.array(0.5 * (radius_Earth + altitude_for_reentry_dueToDrag + r))
 orbital_velocity = np.array(np.sqrt((mass_Earth * Grav_constant) / r / 1000))
 V_a = np.array(np.sqrt((mass_Earth * Grav_constant) * ((2 / r / 1000) - (1 / a / 1000))))
 Delta_V = np.array(orbital_velocity - V_a)
+
+M_prop_previous = np.zeros((3, len(dry_masses[0, :])))
 
 while counter < limit:
 
@@ -71,7 +73,7 @@ while counter < limit:
     # tank calculations
     Delta_volumes = np.ones((3, len(M_props[0, :])))
     for idx in range(len(Prop_density)):
-        Delta_volumes[idx, :] = M_props[idx, :]/Prop_density[idx]
+        Delta_volumes[idx, :] = (M_props[idx, :] - M_prop_previous[idx, :])/Prop_density[idx]
 
     for j in range(3):
         for k in range(len(M_props[0, :])):
@@ -82,6 +84,8 @@ while counter < limit:
             dry_masses[j, k] = dry_masses[j, k] + delta_mass
             mass_variation[counter] = dry_masses[j, k]
     counter += 1
+    print(dry_masses[0, 0])
+    M_prop_previous = M_props
 
 plt.figure()
 plt.plot(iteration_n, mass_variation)
