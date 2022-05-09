@@ -11,7 +11,7 @@ side_length = 1000
 # height of triangle [m]
 depth = 50
 tan_side = np.sqrt((side_length/2)**2 + depth**2)
-# Interior surface area
+# Interior surface area [m**2]
 int_area = (0.5 * side_length * tan_side) * 4
 
 
@@ -25,7 +25,7 @@ delta_b = 2.8
 # Debris projectile mass [g]
 M = 10
 # Relative velocity [km/s]
-v = 0.5
+v = 0.1
 # Geometry angle between horizontal and net [rad]
 theta = np.arctan(((side_length/2) / depth) * np.pi/180)
 # Spacing between bumper and rear wall [cm], S/d between 15 and 96
