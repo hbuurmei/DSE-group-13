@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.optimize import fsolve
 
 # Define constants
 R_e = 6378137  # [m]
@@ -11,6 +12,7 @@ mu = 3.986004418e14  # [m3/s2]
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
 debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
+debris_info = debris_info.head(1000)
 debris_info = debris_info.to_dict()
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
 
@@ -24,18 +26,22 @@ def getPosition(a, e, t, M_0):
     n = np.sqrt(mu / a ** 3)  # Mean motion
     M = n*t - M_0
 
-    # Newton's method to solve the equation
-    def eq(E, e, M): return E - e * np.sin(E) - M
+    # # Newton's method to solve the equation
+    # def eq(E, e, M): return E - e * np.sin(E) - M
+    #
+    # def d_eq(E, e): return 1 - e * np.cos(E)
+    #
+    # err, E_old = 100, M
+    # while abs(err) > 1e-13:  # Make smaller late if possible
+    #     # print(E_old)
+    #     E_new = E_old - (eq(E_old, e, M) / d_eq(E_old, e))
+    #     err = E_new - E_old
+    #     E_old = E_new
+    # E = E_new  # Choose final value
 
-    def d_eq(E, e): return 1 - e * np.cos(E)
-
-    err, E_old = 100, M
-    while abs(err) > 1e-13:  # Make smaller late if possible
-        # print(E_old)
-        E_new = E_old - (eq(E_old, e, M) / d_eq(E_old, e))
-        err = E_new - E_old
-        E_old = E_new
-    E = E_new  # Choose final value
+    func = lambda E: E - e * np.sin(E) - M
+    init_guess = 0
+    E = fsolve(func, init_guess)
 
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
@@ -57,7 +63,8 @@ def KeplerToCartesian(a, e, w, true_anomaly):
     return np.array([X, Y, Z]).T
 
 
-t = 10*100*60
+t0 = 10*100*60
+t = t0
 dt = 1
 # Spacecraft variables
 a_sc = R_e + (789 + 40)*1000
@@ -77,7 +84,7 @@ while not np.all(debris_info["Removed"] == 1):
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
                 debris_info["Removed"][i] = 1
-                print('Time: ', t, 'removed debris fragment')
+                print('Time (h): ', (t - t0)/3600, 'removed debris fragment')
     t += dt
-    print(t/3600)
+    # print(t/3600)
 
