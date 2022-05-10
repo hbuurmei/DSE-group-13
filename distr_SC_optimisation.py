@@ -15,11 +15,10 @@ a_collision = R_e + h_collision
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
 debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']  # Only Kosmos fragments
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
-debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
-print(debris_info)
-debris_info = debris_info.head(debris_n)
-debris_info = debris_info.to_dict()
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
+debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
+index_list = debris_info.index.tolist()
+debris_info = debris_info.to_dict()
 
 
 def getPosition(a, e, t, M_0):
@@ -37,7 +36,6 @@ def getPosition(a, e, t, M_0):
     E = fsolve(func, init_guess)
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
-    print(E)
     return true_anomaly
 
 
@@ -77,7 +75,7 @@ while debris_counter/debris_n < 0.5:
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc)
     # Update space debris position
-    for i in range(len(debris_info["Semi-Major-Axis [m]"])):
+    for i in index_list:
         if debris_info["Removed"][i] == 0:
             true_anomaly_debris = getPosition(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], t, debris_info["Mean Anomaly [rad]"][i])
             pos_debris = KeplerToCartesian(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], debris_info["Mean Anomaly [rad]"][i], true_anomaly_debris)
