@@ -20,5 +20,5 @@ def slowed_orbit(delV, h, m_dry):
     return m, t, m_p, t_b
 
 
-m, t, m_p, t_b = slowed_orbit(100, 1000e3, 350)
+m, t, m_p, t_b = slowed_orbit(100, 1000e3, 500)
 print(m_p, t_b)
