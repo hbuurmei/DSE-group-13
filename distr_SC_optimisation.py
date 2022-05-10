@@ -4,15 +4,19 @@ from scipy.optimize import fsolve
 from matplotlib import pyplot as plt
 
 # Define constants
-R_e = 6378137  # [m]
+R_e = 6378.137e3  # [m]
 g_0 = 9.80665  # [m/s2]
 mu = 3.986004418e14  # [m3/s2]
+h_collision = 789e3  # [m]
 debris_n = 10
+a_collision = R_e + h_collision
 
 # Import the reference data
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
-debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']
+debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']  # Only Kosmos fragments
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
+debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
+print(debris_info)
 debris_info = debris_info.head(debris_n)
 debris_info = debris_info.to_dict()
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
@@ -67,8 +71,9 @@ t0 = 20*100*60
 t = t0
 dt = 10
 debris_counter = 0
+distance_sc = 110000
 # Spacecraft variables
-a_sc = R_e + (789 + 110)*1000
+a_sc = R_e + h_collision + distance_sc
 w_sc = 0
 e_sc = 0
 M_0_sc = 0
