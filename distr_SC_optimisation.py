@@ -17,6 +17,7 @@ debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Frag
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
 debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
+debris_info = debris_info.head(debris_n)
 index_list = debris_info.index.tolist()
 debris_info = debris_info.to_dict()
 
@@ -42,7 +43,7 @@ def getPosition(a, e, t, M_0):
 
 def KeplerToCartesian(a, e, w, true_anomaly):
     '''
-    Convert the a position in the Keplerian system to a cartesian system
+    Convert a position in the Keplerian system to a cartesian system
     @param: true_anomaly, the true anomaly of the spacecraft at time t
     '''
     p = a * (1-e**2)
@@ -57,9 +58,9 @@ def KeplerToCartesian(a, e, w, true_anomaly):
 
 t0 = 20*100*60
 t = t0
-dt = 10
+dt = 50
 debris_counter = 0
-distance_sc = 110000
+distance_sc = 110e3
 # Spacecraft variables
 a_sc = R_e + h_collision + distance_sc
 w_sc = 0
@@ -69,7 +70,6 @@ M_0_sc = 0
 ts = np.array([])
 percentages = np.array([])
 
-#while not np.all(debris_info["Removed"] == 1):
 while debris_counter/debris_n < 0.5:
     ts = np.append(ts, t)
     # Compute spacecraft position
@@ -84,7 +84,6 @@ while debris_counter/debris_n < 0.5:
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
                 debris_info["Removed"][i] = 1
-                print('Time (h): ', (t - t0)/3600, 'removed debris fragment')
                 debris_counter += 1
 
     t += dt
