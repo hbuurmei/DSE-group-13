@@ -1,18 +1,19 @@
 import numpy as np
 import pandas as pd
 from scipy.optimize import fsolve
+from matplotlib import pyplot as plt
 
 # Define constants
 R_e = 6378137  # [m]
 g_0 = 9.80665  # [m/s2]
 mu = 3.986004418e14  # [m3/s2]
-
+debris_n = 10
 
 # Import the reference data
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
 debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
-debris_info = debris_info.head(1000)
+debris_info = debris_info.head(debris_n)
 debris_info = debris_info.to_dict()
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
 
@@ -42,7 +43,6 @@ def getPosition(a, e, t, M_0):
     func = lambda E: E - e * np.sin(E) - M
     init_guess = 0
     E = fsolve(func, init_guess)
-
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
     return true_anomaly
@@ -63,15 +63,22 @@ def KeplerToCartesian(a, e, w, true_anomaly):
     return np.array([X, Y, Z]).T
 
 
-t0 = 10*100*60
+t0 = 20*100*60
 t = t0
-dt = 1
+dt = 10
+debris_counter = 0
 # Spacecraft variables
-a_sc = R_e + (789 + 40)*1000
+a_sc = R_e + (789 + 110)*1000
 w_sc = 0
 e_sc = 0
 M_0_sc = 0
-while not np.all(debris_info["Removed"] == 1):
+
+ts = np.array([])
+percentages = np.array([])
+
+#while not np.all(debris_info["Removed"] == 1):
+while debris_counter/debris_n < 0.5:
+    ts = np.append(ts, t)
     # Compute spacecraft position
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc)
@@ -85,6 +92,21 @@ while not np.all(debris_info["Removed"] == 1):
             if abs_distance < 100e3:
                 debris_info["Removed"][i] = 1
                 print('Time (h): ', (t - t0)/3600, 'removed debris fragment')
-    t += dt
-    # print(t/3600)
+                debris_counter += 1
 
+    t += dt
+    percentages = np.append(percentages, debris_counter/debris_n)
+
+    print("--------------------------------------------")
+    print(round((t - t0)/3600, 2))
+    if (round(t))%2 == 0:
+        print(debris_counter)
+        print(str(round(debris_counter/debris_n*100, 2)) + '%')
+
+
+plt.figure()
+plt.plot((ts - t0)/3600, percentages)
+plt.xlabel('Time [hr]')
+plt.ylabel('Percentage of debris removed [%]')
+plt.grid()
+plt.show()
