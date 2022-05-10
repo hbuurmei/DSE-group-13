@@ -31,24 +31,13 @@ def getPosition(a, e, t, M_0):
     n = np.sqrt(mu / a ** 3)  # Mean motion
     M = n*t - M_0
 
-    # # Newton's method to solve the equation
-    # def eq(E, e, M): return E - e * np.sin(E) - M
-    #
-    # def d_eq(E, e): return 1 - e * np.cos(E)
-    #
-    # err, E_old = 100, M
-    # while abs(err) > 1e-13:  # Make smaller late if possible
-    #     # print(E_old)
-    #     E_new = E_old - (eq(E_old, e, M) / d_eq(E_old, e))
-    #     err = E_new - E_old
-    #     E_old = E_new
-    # E = E_new  # Choose final value
-
+    # Solve the equation numerically
     func = lambda E: E - e * np.sin(E) - M
     init_guess = 0
     E = fsolve(func, init_guess)
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
+    print(E)
     return true_anomaly
 
 
