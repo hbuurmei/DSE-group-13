@@ -34,6 +34,7 @@ def getPosition(a, e, t, M_0):
     func = lambda E: E - e * np.sin(E) - M
     init_guess = 0
     E = fsolve(func, init_guess)
+    E = E[0]
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
     return true_anomaly
