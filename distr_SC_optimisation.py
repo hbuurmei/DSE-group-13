@@ -8,18 +8,19 @@ R_e = 6378.137e3  # [m]
 g_0 = 9.80665  # [m/s2]
 mu = 3.986004418e14  # [m3/s2]
 h_collision = 789e3  # [m]
-debris_n = 10
+debris_n = 1000
 a_collision = R_e + h_collision
 
 # Import the reference data
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
 debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']  # Only Kosmos fragments
-debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
+debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Inclination [rad]",
+                           "Longitude of the ascending node [rad]", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
 debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
 debris_info = debris_info.head(debris_n)
 index_list = debris_info.index.tolist()
-debris_info = debris_info.to_dict()
+debris_info = debris_info.to_numpy()
 
 
 def getPosition(a, e, t, M_0):
@@ -41,49 +42,61 @@ def getPosition(a, e, t, M_0):
     return true_anomaly
 
 
-def KeplerToCartesian(a, e, w, true_anomaly):
+def KeplerToCartesian(a, e, w, true_anomaly, i, RAAN, position):
     '''
     Convert a position in the Keplerian system to a cartesian system
     @param: true_anomaly, the true anomaly of the spacecraft at time t
     '''
     p = a * (1-e**2)
-    r = p/(1 + e * np.cos(w))  # radius
+    r = p/(1 + e * np.cos(true_anomaly))  # radius
 
     # Compute the Cartesian position vector
-    X = r * (np.cos(w + true_anomaly))
-    Y = 0
-    Z = r * (np.sin(w + true_anomaly))
-    return np.array([X, Y, Z]).T
+    X = r * (np.cos(RAAN) * np.cos(w + true_anomaly) - np.sin(RAAN) * np.sin(
+        w + true_anomaly) * np.cos(i))
+    Y = r * (np.sin(RAAN) * np.cos(w + true_anomaly) + np.cos(RAAN) * np.sin(
+        w + true_anomaly) * np.cos(i))
+    Z = r * (np.sin(i) * np.sin(w + true_anomaly))
+    position[0] = X
+    position[1] = Y
+    position[2] = Z
+    return position
 
 
 t0 = 20*100*60
 t = t0
 dt = 50
 debris_counter = 0
-distance_sc = 110e3
+distance_sc = 40e3
 # Spacecraft variables
 a_sc = R_e + h_collision + distance_sc
 w_sc = 0
 e_sc = 0
+i_sc = np.average(debris_info[:, 2])
+RAAN_sc = np.average(debris_info[:, 3])
 M_0_sc = 0
 
 ts = np.array([])
 percentages = np.array([])
+position = np.zeros([3, 1])
 
-while debris_counter/debris_n < 0.5:
+while debris_counter/debris_n < 0.7:
     ts = np.append(ts, t)
     # Compute spacecraft position
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
-    pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc)
+    pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position)
+    print(pos_sc)
     # Update space debris position
-    for i in index_list:
-        if debris_info["Removed"][i] == 0:
-            true_anomaly_debris = getPosition(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], t, debris_info["Mean Anomaly [rad]"][i])
-            pos_debris = KeplerToCartesian(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], debris_info["Mean Anomaly [rad]"][i], true_anomaly_debris)
+    for i in range(len(debris_info[:, 0])):
+        # debris_info[debris_info[:,6] == 0]
+        if debris_info[i, 6] == 0:
+            true_anomaly_debris = getPosition(debris_info[i, 0], debris_info[i, 1], t, debris_info[i, 5])
+            pos_debris = KeplerToCartesian(debris_info[i, 0], debris_info[i, 1], debris_info[i, 4], true_anomaly_debris,
+                                           debris_info[i, 2], debris_info[i, 3], position)
+            print(pos_debris)
             rel_pos = pos_debris - pos_sc
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
-                debris_info["Removed"][i] = 1
+                debris_info[i, 6] = 1
                 debris_counter += 1
 
     t += dt
