@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 # Define constants
 R_e = 6378.137e3  # [m]
 g_0 = 9.80665  # [m/s2]
+J_2 = 0.00108263  # [-]
 mu = 3.986004418e14  # [m3/s2]
 h_collision = 789e3  # [m]
 debris_n = 1000
@@ -62,6 +63,18 @@ def KeplerToCartesian(a, e, w, true_anomaly, i, RAAN, position):
     return position
 
 
+def J_2_RAAN(a, e, i):
+    n = np.sqrt(mu / a ** 3)
+    RAAN_dot = -1.5*n*R_e**2*J_2*np.cos(i)/a**2/(1-e**2)**2
+    return RAAN_dot
+
+
+def J_2_w(a, e, i):
+    n = np.sqrt(mu / a ** 3)
+    w_dot = 0.75*n*R_e**2*J_2*(4 - 5*(np.sin(i))**2)/a**2/(1-e**2)**2
+    return w_dot
+
+
 t0 = 20*100*60
 t = t0
 dt = 50
@@ -80,8 +93,28 @@ percentages = np.array([])
 position_sc = np.zeros([3, 1])
 position_debris = np.zeros([3, 1])
 
+# J_2 effect sc
+RAAN_dot_sc = J_2_RAAN(a_sc, e_sc, i_sc)
+RAAN_drift_sc = RAAN_dot_sc*dt
+
+w_dot_sc = J_2_w(a_sc, e_sc, i_sc)
+w_drift_sc = w_dot_sc*dt
+
+# J_2 effect debris
+RAAN_dot = J_2_RAAN(debris_info[:, 0], debris_info[:, 1], debris_info[:, 2])
+RAAN_drift = RAAN_dot*dt
+
+w_dot = J_2_w(debris_info[:, 0], debris_info[:, 1], debris_info[:, 2])
+w_drift = w_dot*dt
+
 while debris_counter/debris_n < 0.7:
     ts = np.append(ts, t)
+    # Update RAAN and w due to J_2 (sc)
+    RAAN_sc += RAAN_drift_sc
+    w_sc += w_drift_sc
+    # Update RAAN and w due to J_2 (debris)
+    debris_info[:, 3] += RAAN_drift
+    debris_info[:, 4] += w_drift
     # Compute spacecraft position
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
