@@ -79,7 +79,7 @@ while debris_counter/debris_n < 0.7:
     for i in index_list:
         if debris_info["Removed"][i] == 0:
             true_anomaly_debris = getPosition(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], t, debris_info["Mean Anomaly [rad]"][i])
-            pos_debris = KeplerToCartesian(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], debris_info["Mean Anomaly [rad]"][i], true_anomaly_debris)
+            pos_debris = KeplerToCartesian(debris_info["Semi-Major-Axis [m]"][i], debris_info["Eccentricity"][i], debris_info["Argument of periapsis [rad]"][i], true_anomaly_debris)
             rel_pos = pos_debris - pos_sc
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
