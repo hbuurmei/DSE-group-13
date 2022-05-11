@@ -77,27 +77,26 @@ M_0_sc = 0
 
 ts = np.array([])
 percentages = np.array([])
-position = np.zeros([3, 1])
+position_sc = np.zeros([3, 1])
+position_debris = np.zeros([3, 1])
 
 while debris_counter/debris_n < 0.7:
     ts = np.append(ts, t)
     # Compute spacecraft position
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
-    pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position)
-    print(pos_sc)
+    pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
     # Update space debris position
     for i in range(len(debris_info[:, 0])):
         # debris_info[debris_info[:,6] == 0]
         if debris_info[i, 6] == 0:
             true_anomaly_debris = getPosition(debris_info[i, 0], debris_info[i, 1], t, debris_info[i, 5])
             pos_debris = KeplerToCartesian(debris_info[i, 0], debris_info[i, 1], debris_info[i, 4], true_anomaly_debris,
-                                           debris_info[i, 2], debris_info[i, 3], position)
-            print(pos_debris)
+                                           debris_info[i, 2], debris_info[i, 3], position_debris)
             rel_pos = pos_debris - pos_sc
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
                 debris_info[i, 6] = 1
-                debris_counter += 1
+                debris_counter = len(debris_info[debris_info[:,6] == 1])
 
     t += dt
     percentages = np.append(percentages, debris_counter/debris_n)
