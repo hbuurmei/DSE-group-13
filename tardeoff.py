@@ -32,7 +32,7 @@ scoring_matrix = np.array([[108.6, 45.34,	3, 49950, 3684.55, 3774.55, 96.6],
 
 for i in range(0, 7):
     column = scoring_matrix[:, i]
-    column = 5 * column / np.amax(column)
+    column = 4 * (column - np.amin(column)) / (np.amax(column) - np.amin(column)) + 1
     scoring_matrix[:, i] = column
 
 laser = tc.design(name="Laser", sourcelist=scoring_matrix[0])
