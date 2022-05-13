@@ -13,13 +13,13 @@ import numpy as np
 # Limit_val is only nesscarry for "fixed" where it defines the manual rangee, and "SD" where it defines x
 # EXAMPLE: avi = tc.param(name="Availability", weight=1/3, Limitype="fixed", Limit_val=[1, 5])
 
-risk = tc.param(name="Risk", weight=0.35, var=0.01, Limitype="fixed", Limit_val=[1, 5], direc="LB")
-speed = tc.param(name="Debris removal speed", weight=0.324, var=0.01, Limitype="fixed", Limit_val=[1, 5], direc="HB")
-power = tc.param(name="Power", weight=0.02, var=0.00002, Limitype="fixed", Limit_val=[1, 5], direc="LB")
-complex = tc.param(name="Complexity", weight=0.0837, var=0.000016, Limitype="fixed", Limit_val=[1, 5], direc="LB")
-volume = tc.param(name="Volume", weight=0.0439, var=0.000041, Limitype="fixed", Limit_val=[1, 5], direc="LB")
-wet_mass = tc.param(name="Wet mass", weight=0.0975, var=0.000087, Limitype="fixed", Limit_val=[1, 5], direc="LB")
-dry_mass = tc.param(name="Dry mass", weight=0.0810, var=0.000068, Limitype="fixed", Limit_val=[1, 5], direc="LB")
+risk = tc.param(name="Risk", weight=0.35, var=0.01, Limitype="minmax", direc="LB")
+speed = tc.param(name="Debris removal speed", weight=0.324, var=0.01, Limitype="minmax", direc="HB")
+power = tc.param(name="Power", weight=0.02, var=0.00002, Limitype="minmax", direc="LB")
+complex = tc.param(name="Complexity", weight=0.0837, var=0.000016, Limitype="minmax", direc="LB")
+volume = tc.param(name="Volume", weight=0.0439, var=0.000041, Limitype="minmax", direc="LB")
+wet_mass = tc.param(name="Wet mass", weight=0.0975, var=0.000087, Limitype="minmax", direc="LB")
+dry_mass = tc.param(name="Dry mass", weight=0.0810, var=0.000068, Limitype="minmax", direc="LB")
 param_list = [complex, risk, speed, power, dry_mass, wet_mass, volume]
 
 # Define the designs to be traded off source list being the values assigned
@@ -30,10 +30,10 @@ scoring_matrix = np.array([[108.6, 45.34,	3, 49950, 3684.55, 3774.55, 96.6],
                   [74.3,  65.52, 1, 10890, 868.56, 1475.5, 8.25],
                   [62.2, 80.86, 1, 8750, 4873, 12338.3, 13.55]])
 
-for i in range(0, 7):
-    column = scoring_matrix[:, i]
-    column = 4 * (column - np.amin(column)) / (np.amax(column) - np.amin(column)) + 1
-    scoring_matrix[:, i] = column
+# for i in range(0, 7):
+    # column = scoring_matrix[:, i]
+    # column = 4 * (column - np.amin(column)) / (np.amax(column) - np.amin(column)) + 1
+    # scoring_matrix[:, i] = column
 
 laser = tc.design(name="Laser", sourcelist=scoring_matrix[0])
 laser_constellation = tc.design(name="Laser constellation", sourcelist=scoring_matrix[1])
