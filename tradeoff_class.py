@@ -171,7 +171,7 @@ class tradeoff:
 					output += " High Best"
 				else:
 					output += " Low Best"
-				output += ", $\sigma="+ val_s(param.sd) + "$}"
+				output += ", $\sigma="+ val_s(np.sqrt(param.var)) + "$}"
 
 			print(str(output) + "& \multirow{-4}{*}{\\textbf{Total}} \\\\ \hline")
 			for i in range(len(self.design_list)):
