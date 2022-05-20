@@ -20,18 +20,19 @@ def slowed_orbit(t_b, h, m_dry):
     return m, t, m_p
 
 
-t_b = 365.25/2*24*3600
-h_range = range(350000, 1000000, 50000)
-m_dry_range = range(100, 10000+100, 100)
+t_b_range = np.linspace(1, 15e6, 100)
+h_range = np.arange(350e3, 1000e3, 50e3)
+m_dry_range = np.linspace(100, 10000, 100)
 prop_list = []
 
-for h in h_range:
-    for m_dry in m_dry_range:
-        _, _, m_p = slowed_orbit(t_b, h, m_dry)
-        prop_list.append(m_p)
+for t_b in t_b_range:
+    for h in h_range:
+        for m_dry in m_dry_range:
+            _, _, m_p = slowed_orbit(t_b, h, m_dry)
+            prop_list.append(m_p)
 
-print('The minimum propellant mass:', '{:.2e}'.format(min(prop_list)), '[kg].')
-
+print(len(prop_list), '# combinations.')
+print('The minimum propellant mass :', '{:.2e}'.format(min([m for m in prop_list if m > 0])), '[kg].')
 
 m_dry = 350  # [kg]
 r = R_e + 350000  # [m]
@@ -39,6 +40,6 @@ delV = np.linspace(0.1, 100, 1000)  # [m/s]
 m_p = m_dry*(np.exp((mu/r**2-(np.sqrt(mu/r)-delV)**2/r)/(I_sp*g_0)*2*np.pi*r/delV)-1)  # [kg]
 t_b = 2*np.pi*r/delV
 plt.plot(delV, m_p)
-plt.show()
+# plt.show()
 plt.plot(t_b, m_p)
-plt.show()
+# plt.show()
