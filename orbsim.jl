@@ -64,6 +64,22 @@ debris_removed = zeros(Bool, tot_debris_n)
     return true_anomaly
 end
 
+# TODO Perhaps pass the array into function and just fill directly
+@inline function kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN, position)
+    # Convert a position in the Keplerian system to a cartesian system
+    p = a * (1 - e * e)
+    r = p / (1 + e * cos(true_anomaly)) # radius
+
+    # Compute the Cartesian position vector
+    X = r * (cos(RAAN) * cos(w + true_anomaly) - sin(RAAN) * sin(w + true_anomaly) * cos(i))
+    Y = r * (sin(RAAN) * cos(w + true_anomaly) + cos(RAAN) * sin(w + true_anomaly) * cos(i))
+    Z = r * (sin(i) * sin(w + true_anomaly))
+    
+    position[1] = X
+    position[2] = Y
+    position[3] = Z
+end
+
 @inline function J_2_RAAN(a, e, i)
     n = sqrt(mu / a^3)
     RAAN_dot = -1.5 * n * R_e * R_e * J_2 * cos(i) / (a * a) / (1 - e * e)^2
@@ -119,7 +135,7 @@ function run_sim()
         @tturbo for i = 1:tot_debris_n
             @inbounds true_anomaly_debris = true_anom(debris_kepler[i, 1], debris_kepler[i, 2], t, debris_kepler[i, 6])
 
-            # Left here for readability
+            # left here for readability
             # @inbounds a = debris_kepler[i, 1]
             # @inbounds e = debris_kepler[i, 2]
             # @inbounds w = debris_kepler[i, 5]
