@@ -132,7 +132,7 @@ function run_sim()
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
         
         # Update space debris position
-        @tturbo for i = 1:tot_debris_n
+        Threads.@threads for i = 1:tot_debris_n
             @inbounds true_anomaly_debris = true_anom(debris_kepler[i, 1], debris_kepler[i, 2], t, debris_kepler[i, 6])
             # @inbounds kepler_to_cartesian(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], true_anomaly_debris, debris_kepler[i, 3], debris_kepler[i, 4], view(debris_carthesian, i, :))
             
@@ -153,9 +153,9 @@ function run_sim()
             @inbounds debris_carthesian[i,3] = r * (sin(inc) * sin(w + true_anomaly_debris))
         end
 
+        # This is separate from the above loop because @tturbo uses vector intrinsics, which are not available for more complex functions like sqrt()
         Threads.@threads for i = 1:tot_debris_n
-            @inbounds rel_pos = debris_carthesian[i,:] - position_sc
-            @inbounds abs_distance = sqrt(rel_pos[1] * rel_pos[1] + rel_pos[2] * rel_pos[2] + rel_pos[3] * rel_pos[3])
+            @inbounds abs_distance = norm(debris_carthesian[i,:] - position_sc)
             # println(abs_distance)
             if abs_distance < 100e3
                 @inbounds debris_removed[i] = true
