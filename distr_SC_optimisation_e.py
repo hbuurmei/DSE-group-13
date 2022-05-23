@@ -8,7 +8,7 @@ R_e = 6378.137e3  # [m]
 g_0 = 9.80665  # [m/s2]
 mu = 3.986004418e14  # [m3/s2]
 h_collision = 789e3  # [m]
-debris_n = 1000
+debris_n = 10
 a_collision = R_e + h_collision
 
 # Import the reference data
@@ -17,7 +17,7 @@ debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Frag
 debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Inclination [rad]",
                            "Longitude of the ascending node [rad]", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
 debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
-debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]
+debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision]  # - 60e3
 debris_info = debris_info.head(debris_n)
 index_list = debris_info.index.tolist()
 debris_info = debris_info.to_numpy()
@@ -34,7 +34,7 @@ def getPosition(a, e, t, M_0):
     # Solve the equation numerically
     func = lambda E: E - e * np.sin(E) - M
     init_guess = 3
-    E = fsolve(func, init_guess, xtol=0.0001)
+    E = fsolve(func, init_guess)  # , xtol=0.001
     E = E[0]
     # Final equation
     true_anomaly = 2 * np.arctan(np.sqrt((1 + e) / (1 - e)) * np.tan(E / 2))
@@ -51,11 +51,11 @@ def KeplerToCartesian(a, e, w, true_anomaly, i, RAAN, position):
     r = p/(1 + e * np.cos(true_anomaly))  # radius
 
     # Compute the Cartesian position vector
-    position[:,0] = r * (np.cos(RAAN) * np.cos(w + true_anomaly) - np.sin(RAAN) * np.sin(
+    position[:, 0] = r * (np.cos(RAAN) * np.cos(w + true_anomaly) - np.sin(RAAN) * np.sin(
         w + true_anomaly) * np.cos(i))
-    position[:,1] = r * (np.sin(RAAN) * np.cos(w + true_anomaly) + np.cos(RAAN) * np.sin(
+    position[:, 1] = r * (np.sin(RAAN) * np.cos(w + true_anomaly) + np.cos(RAAN) * np.sin(
         w + true_anomaly) * np.cos(i))
-    position[:,2] = r * (np.sin(i) * np.sin(w + true_anomaly))
+    position[:, 2] = r * (np.sin(i) * np.sin(w + true_anomaly))
     return position
 
 
@@ -78,14 +78,14 @@ position_sc = np.zeros([1, 3])
 position_debris = np.zeros((len(debris_info[:, 0]), 3))
 debris_true_anomalies = np.zeros(len(debris_info[:, 0]))
 
-while debris_counter/debris_n < 0.7:
+while debris_counter/debris_n < 0.822231:
     ts.append(t)
 
     # Compute spacecraft position
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
 
-    active_debris_idx = np.isclose(debris_info[:, 6], 0) # Extract only "active" debris objects
+    active_debris_idx = np.isclose(debris_info[:, 6], 0)  # Extract only "active" debris objects
     reduced_debris_info = debris_info[active_debris_idx]
 
     for i in range(reduced_debris_info.shape[0]):
@@ -94,7 +94,7 @@ while debris_counter/debris_n < 0.7:
                                        reduced_debris_info[:, 2], reduced_debris_info[:, 3], position_debris[active_debris_idx])
     rel_pos = pos_debris - pos_sc
     abs_distance = np.linalg.norm(rel_pos, axis=1)
-    reduced_debris_info[abs_distance < 100e3,6] = 1
+    reduced_debris_info[abs_distance < 100e3, 6] = 1
     debris_info[active_debris_idx] = reduced_debris_info
 
     t += dt
@@ -105,13 +105,12 @@ while debris_counter/debris_n < 0.7:
     print("--------------------------------------------")
     print(round((t - t0)/3600, 2))
     if (round(t))%2 == 0:
-        debris_counter = debris_info.shape[0] - reduced_debris_info.shape[0]
         print(debris_counter)
         print(str(round(debris_counter/debris_n*100, 2)) + '%')
 
 
 plt.figure()
-plt.plot((np.array(ts) - t0)/3600, percentages)
+plt.plot((np.array(ts) - t0)/3600, percentages*0.6)
 plt.xlabel('Time [hr]')
 plt.ylabel('Percentage of debris removed [%]')
 plt.grid()
