@@ -132,7 +132,7 @@ function run_sim()
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
         
         # Update space debris position
-        Threads.@threads for i = 1:tot_debris_n
+        @tturbo for i = 1:tot_debris_n
             @inbounds true_anomaly_debris = true_anom(debris_kepler[i, 1], debris_kepler[i, 2], t, debris_kepler[i, 6])
             # @inbounds kepler_to_cartesian(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], true_anomaly_debris, debris_kepler[i, 3], debris_kepler[i, 4], view(debris_carthesian, i, :))
             
