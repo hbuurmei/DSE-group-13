@@ -63,6 +63,17 @@ def KeplerToCartesian(a, e, w, true_anomaly, i, RAAN, position):
     return position
 
 
+def getVelocity(a, e, w, true_anomaly, i, RAAN, position):
+    p = a * (1-e**2)
+    r = p/(1 + e * np.cos(true_anomaly))  # radius
+    h = np.sqrt(mu*p)
+    V_X = (position[0] * h * e / (r * p)) * np.sin(true_anomaly) - (h / r) * (np.cos(RAAN) * np.sin(w + true_anomaly) + np.sin(RAAN) * np.cos(w + true_anomaly) * np.cos(i))
+    V_Y = (position[1] * h * e / (r * p)) * np.sin(true_anomaly) - (h / r) * (np.sin(RAAN) * np.sin(w + true_anomaly) - np.cos(RAAN) * np.cos(w + true_anomaly) * np.cos(i))
+    V_Z = (position[2] * h * e / (r * p)) * np.sin(true_anomaly) + (h / r) * (np.cos(w + true_anomaly) * np.sin(i))
+    V = np.array([V_X, V_Y, V_Z])
+    return V
+
+
 def J_2_RAAN(a, e, i):
     n = np.sqrt(mu / a ** 3)
     RAAN_dot = -1.5*n*R_e**2*J_2*np.cos(i)/a**2/(1-e**2)**2
@@ -107,7 +118,7 @@ RAAN_drift = RAAN_dot*dt
 w_dot = J_2_w(debris_info[:, 0], debris_info[:, 1], debris_info[:, 2])
 w_drift = w_dot*dt
 
-while debris_counter/debris_n < 0.822231 and t-t0 < 365*24*3600:
+while debris_counter/debris_n < 0.822231:
     ts = np.append(ts, t)
     # Update RAAN and w due to J_2 (sc)
     RAAN_sc += RAAN_drift_sc
@@ -120,7 +131,6 @@ while debris_counter/debris_n < 0.822231 and t-t0 < 365*24*3600:
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
     # Update space debris position
     for i in range(len(debris_info[:, 0])):
-        # debris_info[debris_info[:,6] == 0]
         if debris_info[i, 6] == 0:
             true_anomaly_debris = getPosition(debris_info[i, 0], debris_info[i, 1], t, debris_info[i, 5])
             pos_debris = KeplerToCartesian(debris_info[i, 0], debris_info[i, 1], debris_info[i, 4], true_anomaly_debris,
@@ -128,8 +138,13 @@ while debris_counter/debris_n < 0.822231 and t-t0 < 365*24*3600:
             rel_pos = pos_debris - pos_sc
             abs_distance = np.linalg.norm(rel_pos)
             if abs_distance < 100e3:
-                debris_info[i, 6] = 1
-                debris_counter = len(debris_info[debris_info[:,6] == 1])
+                vel_sc = getVelocity(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
+                pointing_laser = - vel_sc
+                if sum(pointing_laser*rel_pos) / (np.linalg.norm(pointing_laser) * np.linalg.norm(rel_pos)) > 0.5:
+                    debris_info[i, 6] = 1
+                    debris_counter = len(debris_info[debris_info[:, 6] == 1])
+                else:
+                    print("Ineffective geometry")
 
     t += dt
     percentages = np.append(percentages, debris_counter/debris_n)
