@@ -32,7 +32,6 @@ def getPosition(a, e, t, M_0):
     '''
     n = np.sqrt(mu / a ** 3)  # Mean motion
     M = n*t - M_0
-
     # Solve the equation numerically
     func = lambda E: E - e * np.sin(E) - M
     init_guess = 0
@@ -91,7 +90,8 @@ M_0_sc = 0
 ts = np.array([])
 percentages = np.array([])
 position_sc = np.zeros([3, 1])
-position_debris = np.zeros([3, 1])
+position_debris = np.zeros((3, len(debris_info[:, 0])))
+debris_true_anomalies = np.zeros(len(debris_info[:, 0]))
 
 # J_2 effect sc
 RAAN_dot_sc = J_2_RAAN(a_sc, e_sc, i_sc)
@@ -119,17 +119,18 @@ while debris_counter/debris_n < 0.7:
     true_anomaly_sc = getPosition(a_sc, e_sc, t, M_0_sc)
     pos_sc = KeplerToCartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
     # Update space debris position
-    for i in range(len(debris_info[:, 0])):
-        # debris_info[debris_info[:,6] == 0]
-        if debris_info[i, 6] == 0:
-            true_anomaly_debris = getPosition(debris_info[i, 0], debris_info[i, 1], t, debris_info[i, 5])
-            pos_debris = KeplerToCartesian(debris_info[i, 0], debris_info[i, 1], debris_info[i, 4], true_anomaly_debris,
-                                           debris_info[i, 2], debris_info[i, 3], position_debris)
-            rel_pos = pos_debris - pos_sc
-            abs_distance = np.linalg.norm(rel_pos)
-            if abs_distance < 100e3:
-                debris_info[i, 6] = 1
-                debris_counter = len(debris_info[debris_info[:,6] == 1])
+    debris_info0 = debris_info[debris_info[:, 6] == 0]
+    for i in range(len(debris_info0[:, 0])):
+        true_anomaly_debris = getPosition(debris_info0[i, 0], debris_info0[i, 1], t, debris_info0[i, 5])
+        debris_true_anomalies[i] = true_anomaly_debris
+    pos_debris = KeplerToCartesian(debris_info0[:, 0], debris_info0[:, 1], debris_info0[:, 4], debris_true_anomalies,
+                                       debris_info0[:, 2], debris_info0[:, 3], position_debris)
+    rel_pos = pos_debris - pos_sc
+    abs_distance = np.linalg.norm(rel_pos)
+    debris_info0[:, 6][abs_distance < 100e3] = 1
+    # if abs_distance < 100e3:
+    #     debris_info[i, 6] = 1
+    debris_counter += len(debris_info0[debris_info0[:, 6] == 1])
 
     t += dt
     percentages = np.append(percentages, debris_counter/debris_n)
@@ -142,7 +143,7 @@ while debris_counter/debris_n < 0.7:
 
 
 plt.figure()
-plt.plot((ts - t0)/3600, percentages)
+plt.plot((ts - t0)/3600/24, percentages*100)
 plt.xlabel('Time [hr]')
 plt.ylabel('Percentage of debris removed [%]')
 plt.grid()
