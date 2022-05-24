@@ -3,12 +3,14 @@ using Pkg
 # Pkg.add("LoopVectorization")
 # Pkg.add("CSV")
 # Pkg.add("DataFrames")
+# Pkg.add("Plots")
 
 using CSV
 using DataFrames
 using Statistics
 using LinearAlgebra
 using LoopVectorization
+using Plots
 
 # Constants
 const R_e = 6378.137e3  # [m]
@@ -16,7 +18,7 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 10000  # total n is 21627 fragments, change this number for simulation speed
+const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60
@@ -32,11 +34,12 @@ const M_0_sc = 0
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
 
 # Select data that is necessary and convert to matrix
-df2 = filter(row -> row.Name .== "Kosmos 2251-Collision-Fragment", df)
-df3 = filter(row -> row.d_eq .< 0.1, df2)
-df4 = filter(row -> row.e .< 1.0, df3)
-df5 = select(df4, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom"])
-debris_kepler = Matrix(df5)
+df = filter(row -> row.Name .== "Kosmos 2251-Collision-Fragment", df)
+#df = filter(row -> row.d_eq .< 0.1, df)
+df = filter(row -> row.e .< 1.0, df)
+df = filter(row -> row.a .< (a_collision - 60e3), df)
+df = select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom"])
+debris_kepler = Matrix(df)
 
 # Cut data set down to set number of fragments
 tot_debris_n = min(debris_n, length(debris_kepler[:,1]))
@@ -103,6 +106,9 @@ function run_sim()
     percentages = Vector{Float64}(undef, 0)
     position_sc = zeros(3)
 
+    sizehint!(ts, 100000);
+    sizehint!(percentages, 100000);
+
     # J_2 effect sc
     RAAN_drift_sc = J_2_RAAN(a_sc, e_sc, i_sc) * dt
     w_drift_sc = J_2_w(a_sc, e_sc, i_sc) * dt
@@ -116,23 +122,23 @@ function run_sim()
         @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
     end
 
-    while (debris_counter / tot_debris_n < 0.5) && (t - t0 < 7 * 24 * 3600) # Limited to 7 days for testing
+    while (debris_counter / tot_debris_n < 0.822231) && (t - t0 < 365 * 24 * 3600) # Limited to 7 days for testing
         push!(ts, t)
 
         # Update RAAN and w due to J_2 (sc)
         RAAN_sc += RAAN_drift_sc
         w_sc += w_drift_sc
 
-        # Update RAAN and w due to J_2 (debris)
-        @inbounds debris_kepler[:, 4] += RAAN_drift
-        @inbounds debris_kepler[:, 5] += w_drift
-
         # Compute spacecraft position
         true_anomaly_sc = true_anom(a_sc, e_sc, t, M_0_sc)
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
         
         # Update space debris position
-        @tturbo for i = 1:tot_debris_n
+        @turbo for i = 1:tot_debris_n
+            # Update RAAN and w due to J_2 (debris)
+            @inbounds debris_kepler[i, 4] += RAAN_drift[i]
+            @inbounds debris_kepler[i, 5] += w_drift[i]
+
             @inbounds true_anomaly_debris = true_anom(debris_kepler[i, 1], debris_kepler[i, 2], t, debris_kepler[i, 6])
 
             # left here for readability
@@ -171,6 +177,11 @@ function run_sim()
             println(round(debris_counter / debris_n * 100, digits=2), '%')
         end
     end
+
+    return (ts, percentages)
 end
 
-@time run_sim()
+@time (times, perc) = run_sim()
+
+p = plot(times ./ 24, perc, xlabel="Time [days]", ylabel="Removal fraction [%]")
+savefig(p, "DebrisRemovalTime.pdf")
