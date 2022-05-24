@@ -16,7 +16,7 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 10000  # total n is 21627 fragments, change this number for simulation speed
+const debris_n = 1000  # total n is 21627 fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60
@@ -42,7 +42,7 @@ debris_kepler = Matrix(df5)
 tot_debris_n = min(debris_n, length(debris_kepler[:,1]))
 println(tot_debris_n)
 debris_kepler = debris_kepler[1:tot_debris_n,:]
-debris_carthesian = Matrix{Float64}(undef, tot_debris_n, 3)
+debris_cartesian = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_removed = zeros(Bool, tot_debris_n)
 
 # display(debris_kepler)
@@ -80,6 +80,21 @@ end
     position[3] = Z
 end
 
+@inline function getVelocity(a, e, w, true_anomaly, i, RAAN, position, velocity)
+    # Get the velocity in cartesian coordinates
+    p = a * (1 - e * e)
+    r = p / (1 + e * cos(true_anomaly)) # radius
+    h = sqrt(mu * p)
+
+    V_X = (position[1] * h * e / (r * p)) * sin(true_anomaly) - (h / r) * (cos(RAAN) * sin(w + true_anomaly) + sin(RAAN) * cos(w + true_anomaly) * cos(i))
+    V_Y = (position[2] * h * e / (r * p)) * sin(true_anomaly) - (h / r) * (sin(RAAN) * sin(w + true_anomaly) - cos(RAAN) * cos(w + true_anomaly) * cos(i))
+    V_Z = (position[3] * h * e / (r * p)) * sin(true_anomaly) + (h / r) * (cos(w + true_anomaly) * sin(i))
+
+    velocity[1] = V_X
+    velocity[2] = V_Y
+    velocity[3] = V_Z
+end
+
 @inline function J_2_RAAN(a, e, i)
     n = sqrt(mu / a^3)
     RAAN_dot = -1.5 * n * R_e * R_e * J_2 * cos(i) / (a * a) / (1 - e * e)^2
@@ -102,6 +117,7 @@ function run_sim()
     ts = Vector{Float64}(undef, 0)
     percentages = Vector{Float64}(undef, 0)
     position_sc = zeros(3)
+    vel_sc = zeros(3)
 
     # J_2 effect sc
     RAAN_drift_sc = J_2_RAAN(a_sc, e_sc, i_sc) * dt
@@ -116,7 +132,7 @@ function run_sim()
         @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
     end
 
-    while (debris_counter / tot_debris_n < 0.5) && (t - t0 < 7 * 24 * 3600) # Limited to 7 days for testing
+    while (debris_counter / tot_debris_n < 0.5) # Limited to 7 days for testing
         push!(ts, t)
 
         # Update RAAN and w due to J_2 (sc)
@@ -146,17 +162,22 @@ function run_sim()
             r = p / (1 + debris_kepler[i, 2] * cos(true_anomaly_debris)) # radius
 
             # Compute the Cartesian position vector
-            @inbounds debris_carthesian[i,1] = r * (cos(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + true_anomaly_debris) - sin(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + true_anomaly_debris) * cos(debris_kepler[i, 3]))
-            @inbounds debris_carthesian[i,2] = r * (sin(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + true_anomaly_debris) + cos(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + true_anomaly_debris) * cos(debris_kepler[i, 3]))
-            @inbounds debris_carthesian[i,3] = r * (sin(debris_kepler[i, 3]) * sin(debris_kepler[i, 5] + true_anomaly_debris))
+            @inbounds debris_cartesian[i, 1] = r * (cos(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + true_anomaly_debris) - sin(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + true_anomaly_debris) * cos(debris_kepler[i, 3]))
+            @inbounds debris_cartesian[i, 2] = r * (sin(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + true_anomaly_debris) + cos(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + true_anomaly_debris) * cos(debris_kepler[i, 3]))
+            @inbounds debris_cartesian[i, 3] = r * (sin(debris_kepler[i, 3]) * sin(debris_kepler[i, 5] + true_anomaly_debris))
         end
 
         # This is separate from the above loop because @tturbo uses vector intrinsics, which are not available for more complex functions like sqrt()
-        Threads.@threads for i = 1:tot_debris_n
-            @inbounds abs_distance = norm(debris_carthesian[i,:] - position_sc)
+        for i = 1:tot_debris_n
+            @inbounds rel_pos = debris_cartesian[i,:] - position_sc
+            @inbounds abs_distance = norm(debris_cartesian[i,:] - position_sc)
             # println(abs_distance)
             if abs_distance < 100e3
-                @inbounds debris_removed[i] = true
+                getVelocity(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc, vel_sc)
+                pointing_laser = - vel_sc
+                if sum(pointing_laser.*rel_pos) / (norm(pointing_laser) * norm(rel_pos)) > 0.5
+                    @inbounds debris_removed[i] = true
+                end
             end
         end
 
