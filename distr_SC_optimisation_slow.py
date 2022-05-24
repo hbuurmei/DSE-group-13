@@ -151,7 +151,7 @@ while debris_counter/debris_n < 0.822231:
 
     print("--------------------------------------------")
     print(round((t - t0)/3600, 2))
-    if (round(t))%2 == 0:
+    if (round(t)) % 2 == 0:
         print(debris_counter)
         print(str(round(debris_counter/debris_n*100, 2)) + '%')
 
@@ -163,4 +163,3 @@ plt.ylabel('Percentage of debris removed [%]')
 plt.grid()
 plt.savefig('Debris_removed.png')
 plt.show()
-
