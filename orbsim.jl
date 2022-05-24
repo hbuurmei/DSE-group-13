@@ -116,7 +116,7 @@ function run_sim()
         @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
     end
 
-    while (debris_counter / debris_n < 0.5) && (t - t0 < 7 * 24 * 3600) # Limited to 7 days for testing
+    while (debris_counter / tot_debris_n < 0.5) && (t - t0 < 7 * 24 * 3600) # Limited to 7 days for testing
         push!(ts, t)
 
         # Update RAAN and w due to J_2 (sc)
