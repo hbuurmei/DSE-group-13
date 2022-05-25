@@ -36,8 +36,8 @@ df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
 # Select data that is necessary and convert to matrix
 df = filter(row -> row.Name .== "Kosmos 2251-Collision-Fragment", df)
 #df = filter(row -> row.d_eq .< 0.1, df)
-df = filter(row -> row.e .< 1.0, df)
-df = filter(row -> row.a .< (a_collision - 60e3), df)
+# df = filter(row -> row.e .< 1.0, df)
+df = filter(row -> row.a .> (a_collision - 60e3), df)
 df = select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom"])
 debris_kepler = Matrix(df)
 
@@ -48,7 +48,6 @@ debris_kepler = debris_kepler[1:tot_debris_n,:]
 debris_cartesian = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_removed = zeros(Bool, tot_debris_n)
 
-# display(debris_kepler)
 
 @inline function true_anom(a, e, t, M_0)
     n = sqrt(mu / a^3)
@@ -138,8 +137,8 @@ function run_sim()
         @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
     end
 
-    while (debris_counter / tot_debris_n < 0.822231) && (t - t0 < 365 * 24 * 3600) # Limited to 7 days for testing
-        push!(ts, t)
+    while (debris_counter / tot_debris_n < 0.822231)
+        push!(ts, t - t0)
 
         # Update RAAN and w due to J_2 (sc)
         RAAN_sc += RAAN_drift_sc
@@ -177,15 +176,15 @@ function run_sim()
         getVelocity(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc, vel_sc)
 
         # This is separate from the above loop because @tturbo uses vector intrinsics, which are not available for more complex functions like sqrt()
-        for i = 1:tot_debris_n
-            @inbounds rel_pos = debris_cartesian[i,:] - position_sc
-            @inbounds abs_distance = norm(debris_cartesian[i,:] - position_sc)
+        Threads.@threads for i = 1:tot_debris_n
+            @inbounds rel_pos = debris_cartesian[i, :] - position_sc
+            @inbounds abs_distance = norm(debris_cartesian[i, :] - position_sc)
             # println(abs_distance)
             if abs_distance < 100e3
                 if sum(vel_sc .* rel_pos) / (norm(vel_sc) * norm(rel_pos)) < -0.5
                     @inbounds debris_removed[i] = true
                 else
-                    println("Ineffective geometry")
+                    # println("Ineffective geometry")
                 end
             end
         end
@@ -194,18 +193,37 @@ function run_sim()
         debris_counter = count(p -> (p .== true), debris_removed)
         push!(percentages, debris_counter / debris_n)
 
-        println("--------------------------------------------")
-        println(round((t - t0) / 3600, digits=2))
-        if mod(round(t), 2) == 0
+        if mod(round(t), 100000) == 0
+            println("--------------------------------------------")
+            println(round((t - t0) / 3600, digits=2))
             println(debris_counter)
             println(round(debris_counter / debris_n * 100, digits=2), '%')
+            # Visualise the orbits
+            plt3d = plot(debris_cartesian[:, 1], debris_cartesian[:, 2], debris_cartesian[:, 3],
+                seriestype=:scatter,
+                markersize = 2,
+                xlim = (-8000e3, 8000e3), ylim = (-8000e3, 8000e3), zlim = (-8000e3, 8000e3),
+                title = "Space Debris Detection",
+                label = "Debris fragment",
+                color=:black,
+            )
+            # Spacecraft
+            scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize = 8, color = "green", label = "Spacecraft")
+            # Earth
+            phi = 0:pi/50:2*pi
+            theta = 0:pi/100:pi
+            x = [R_e*cos(t)*sin(p) for t in theta, p in phi]
+            y = [R_e*sin(t)*sin(p) for t in theta, p in phi]
+            z = [R_e*cos(p) for t in theta, p in phi]
+            plot!(x, y, z, linetype=:surface, color=:blue, colorbar = false)
+
+            display(plt3d)
         end
     end
-
     return (ts, percentages)
 end
 
 @time (times, perc) = run_sim()
 
-p = plot(times ./ 24, perc, xlabel="Time [days]", ylabel="Removal fraction [%]")
+p = plot(times./(3600*24), perc.*(100*0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
 savefig(p, "DebrisRemovalTime.pdf")

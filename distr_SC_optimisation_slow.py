@@ -15,10 +15,9 @@ a_collision = R_e + h_collision
 # Import the reference data
 debris_info = pd.read_csv("iridium_cosmos_result.csv")
 debris_info = debris_info.loc[debris_info["Name"] == 'Kosmos 2251-Collision-Fragment']  # Only Kosmos fragments
-debris_info = debris_info[["Semi-Major-Axis [m]", "Eccentricity", "Inclination [rad]",
-                           "Longitude of the ascending node [rad]", "Argument of periapsis [rad]", "Mean Anomaly [rad]"]]
-debris_info["Removed"] = np.zeros(len(debris_info["Semi-Major-Axis [m]"]))
-debris_info = debris_info.loc[debris_info["Semi-Major-Axis [m]"] > a_collision - 60e3]
+debris_info = debris_info[["a", "e", "i", "long_asc", "arg_peri", "mean_anom"]]
+debris_info["Removed"] = np.zeros(len(debris_info["a"]))
+debris_info = debris_info.loc[debris_info["a"] > a_collision - 60e3]
 debris_info = debris_info.head(debris_n)
 index_list = debris_info.index.tolist()
 debris_info = debris_info.to_numpy()
@@ -157,7 +156,7 @@ while debris_counter/debris_n < 0.822231:
 
 
 plt.figure()
-plt.plot((ts - t0)/3600/24, percentages*100*0.6)
+plt.plot((ts - t0)/3600/24, percentages*100*0.61)
 plt.xlabel('Time since start of mission [days]')
 plt.ylabel('Percentage of debris removed [%]')
 plt.grid()
