@@ -1,0 +1,46 @@
+import numpy as np
+
+# Debris Characteristics
+
+# Debris Mass [kg]
+debris_mass = 0.07
+
+# Orbital Height [km]
+h = 1000
+
+# Perigee desired [km]
+perigee_desired = 100
+
+# Coupling Coefficient [N/W]
+C_opt = 30e-6
+
+# mu
+mu = 3.986004418e14
+
+# Radius of Earth [km]
+R_e = 6371
+
+# Orbital Velocity @ Original, Circular Orbit
+v = np.sqrt(mu/((h+R_e)*1000))
+
+# Semi major axis
+a = (perigee_desired + h + 2*R_e)*1000/2
+
+# Orbital velocity at new, elliptical orbit
+v_ellipse = np.sqrt(mu*(2/(1000*(R_e + h)) - 1/a))
+
+# Delta v necessary
+delta_v = v_ellipse - v
+print(delta_v)
+
+# Energy necessary
+delta_E = 0.5*debris_mass*(v**2 - v_ellipse**2)
+print(delta_E)
+
+# Momentum delivered by laser
+p = debris_mass * delta_v
+delta_E_ablation = - p / C_opt
+
+# Efficiency
+eff = delta_E / delta_E_ablation
+print(eff)
