@@ -18,7 +18,7 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000  # number of fragments, change this number for simulation speed
+const debris_n = 100  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60
@@ -29,7 +29,7 @@ const target_fraction = 0.5
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
-const M_0_sc = 0
+const M_0_sc = -0.045 * pi
 
 
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
@@ -40,17 +40,18 @@ df = filter(row -> row.d_eq .< 0.1, df)
 df = filter(row -> row.e .< 1.0, df)
 debris_kepler = Matrix(select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom", "ID"])) # ID is used as an additional column to store true anomaly
 debris_dims = Matrix(select(df, ["M"]))
+debris_kepler = debris_kepler[32:33,:]
+debris_dims = debris_dims[32:33,:]
 
 # Cut data set down to set number of fragments
 tot_debris_n = min(debris_n, length(debris_kepler[:,1]))
-println(tot_debris_n)
+println("Number of debris objects: ", tot_debris_n)
 debris_kepler = debris_kepler[1:tot_debris_n,:]
 debris_true_anoms = zeros(tot_debris_n) # Include this in debris_kepler in the future
 debris_cartesian = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_cartesian_vel = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_removed = zeros(Bool, tot_debris_n, 2)
 
-# display(debris_kepler)
 
 @inline function calc_true_anomaly(a, e, t, M_0)
     n = sqrt(mu / a^3)
@@ -58,6 +59,20 @@ debris_removed = zeros(Bool, tot_debris_n, 2)
 
     # Initial guess
     E = 0 
+
+    # Apply newton method 10x
+    for i = 1:10
+        E = E - (E - e * sin(E) - M) / (1 - e * cos(E))
+    end
+
+    # Final equation
+    true_anomaly = 2 * atan(sqrt((1 + e) / (1 - e)) * tan(E / 2))
+    return true_anomaly
+end
+
+@inline function calc_true_anomaly2(a, e, M)
+    # Initial guess
+    E = 0
 
     # Apply newton method 10x
     for i = 1:10
@@ -101,12 +116,12 @@ end
 @inline function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, thrust_energy, i)
     # Compute product of a and thrust_dt
     # Based on kinetic energy and v2 = a * dt + v1
-    v1 = norm(debris_cartesian_vel[i,:])
-    dir_dv = normalize(thrust_dir) .* (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1)
+    @inbounds v1 = norm(debris_cartesian_vel[i,:])
+    @inbounds dir_dv = normalize(thrust_dir) .* (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1)
 
     # Establish RTO (Radial, Transverse, Out-of-plane) axes (unit vectors)
-    R = normalize(debris_cartesian[i,:])
-    O = normalize(cross(R, debris_cartesian_vel[i,:]))
+    @inbounds R = normalize(debris_cartesian[i,:])
+    @inbounds O = normalize(cross(R, debris_cartesian_vel[i,:]))
     T = cross(O, R)
 
     # Projection into RTO (Radial, Transverse, Out-of-plane)
@@ -115,27 +130,20 @@ end
     dir_dv_rto[2] = dot(dir_dv, T)
     dir_dv_rto[3] = dot(dir_dv, O)
 
-    sqramu = sqrt(debris_kepler[i, 1] / mu)
-    sub1e2 = 1 - debris_kepler[i, 2] * debris_kepler[i, 2]
+    @inbounds sqramu = sqrt(debris_kepler[i, 1] / mu)
+    @inbounds sub1e2 = 1 - debris_kepler[i, 2] * debris_kepler[i, 2]
     sqr1e2 = sqrt(sub1e2)
-    ecosf1 = debris_kepler[i, 2] * cos(debris_kepler[i, 7]) + 1
-    n = sqrt(debris_kepler[i, 1]^3 / mu)
+    @inbounds ecosf1 = debris_kepler[i, 2] * cos(debris_kepler[i, 7]) + 1
+    @inbounds n = sqrt(mu / debris_kepler[i, 1]^3)
 
     # Gaussian perturbation formulae
-    da = sqramu * 2 * debris_kepler[i, 1] / sqr1e2 * (debris_kepler[i, 2] * sin(debris_kepler[i, 7]) * dir_dv[1] + ecosf1 * dir_dv[2])
-    de = sqramu * sqr1e2 * (sin(debris_kepler[i, 7]) * dir_dv[1] + (debris_kepler[i, 2] + 2 * cos(debris_kepler[i, 7]) + debris_kepler[i, 2] * cos(debris_kepler[i, 7])^2) / ecosf1 * dir_dv[2])
-    di = sqramu * sqr1e2 / ecosf1 * cos(debris_kepler[i, 5] + debris_kepler[i, 7]) * dir_dv[3]
+    @inbounds debris_kepler[i, 1] += sqramu * 2 * debris_kepler[i, 1] / sqr1e2 * (debris_kepler[i, 2] * sin(debris_kepler[i, 7]) * dir_dv[1] + ecosf1 * dir_dv[2])
+    @inbounds debris_kepler[i, 2] += sqramu * sqr1e2 * (sin(debris_kepler[i, 7]) * dir_dv[1] + (debris_kepler[i, 2] + 2 * cos(debris_kepler[i, 7]) + debris_kepler[i, 2] * cos(debris_kepler[i, 7])^2) / ecosf1 * dir_dv[2])
+    @inbounds debris_kepler[i, 3] += sqramu * sqr1e2 / ecosf1 * cos(debris_kepler[i, 5] + debris_kepler[i, 7]) * dir_dv[3]
     dRAAN = sqramu * sqr1e2 / ecosf1 * sin(debris_kepler[i, 5] + debris_kepler[i, 7]) / sin(i) * dir_dv[3]
-    dw = sqramu * sqr1e2 / debris_kepler[i, 2] * (- cos(debris_kepler[i, 7]) * dir_dv[1] + (ecosf1 + 1) / ecosf1 * sin(debris_kepler[i, 7]) * dir_dv[2]) - cos(i) * dRAAN
-    dM = n + sub1e2 / (n * debris_kepler[i, 1] * debris_kepler[i, 2]) * ((cos(debris_kepler[i, 7]) - 2 * debris_kepler[i, 2] / ecosf1) * dir_dv[1] - (ecosf1 + 1) / ecosf1 * sin(debris_kepler[i, 7]) * dir_dv[2])
-
-    @inbounds debris_kepler[i, 1] += da
-    @inbounds debris_kepler[i, 2] += de
-    @inbounds debris_kepler[i, 3] += di
-    @inbounds debris_kepler[i, 5] += dw
     @inbounds debris_kepler[i, 4] += dRAAN
-    @inbounds debris_kepler[i, 6] += dM
-
+    @inbounds debris_kepler[i, 5] += sqramu * sqr1e2 / debris_kepler[i, 2] * (- cos(debris_kepler[i, 7]) * dir_dv[1] + (ecosf1 + 1) / ecosf1 * sin(debris_kepler[i, 7]) * dir_dv[2]) - cos(i) * dRAAN
+    # @inbounds debris_kepler[i, 6] += n + sub1e2 / (n * debris_kepler[i, 1] * debris_kepler[i, 2]) * ((cos(debris_kepler[i, 7]) - 2 * debris_kepler[i, 2] / ecosf1) * dir_dv[1] - (ecosf1 + 1) / ecosf1 * sin(debris_kepler[i, 7]) * dir_dv[2])
 end
 
 @inline function J_2_RAAN(a, e, i)
@@ -155,8 +163,8 @@ function run_sim()
     t = t0
     w_sc = 0
 
-    i_sc = mean(debris_kepler[:, 3])
-    RAAN_sc = mean(debris_kepler[:, 4])
+    i_sc = debris_kepler[1, 3] # mean(debris_kepler[:, 3])
+    RAAN_sc = debris_kepler[1, 4] # mean(debris_kepler[:, 4])
     ts = Vector{Float64}(undef, 0)
     percentages = Vector{Float64}(undef, 0)
     position_sc = zeros(3)
@@ -180,8 +188,14 @@ function run_sim()
         @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
     end
 
-    while (debris_counter / tot_debris_n < 0.5) && (t - t0 < 365 * 24 * 3600) # Limited to 7 days for testing
-        push!(ts, t-t0)
+    # Initial mean anomalies, propate orbit until t0
+    @inbounds n = sqrt.(mu / debris_kepler[:, 1].^3)
+    @inbounds debris_kepler[:, 6] = transpose(t .* n) .+ debris_kepler[:, 6]
+
+    display(debris_kepler)
+
+    while (debris_counter / tot_debris_n < target_fraction)
+        push!(ts, t - t0)
 
         # Update RAAN and w due to J_2 (sc)
         RAAN_sc += RAAN_drift_sc
@@ -190,7 +204,7 @@ function run_sim()
         # Compute spacecraft position
         true_anomaly_sc = calc_true_anomaly(a_sc, e_sc, t, M_0_sc)
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
-        
+
         # Update space debris position
         @turbo for i = 1:tot_debris_n
             # left here for readability
@@ -206,10 +220,11 @@ function run_sim()
             @inbounds debris_kepler[i, 4] += RAAN_drift[i]
             @inbounds debris_kepler[i, 5] += w_drift[i]
 
-            @inbounds debris_kepler[i, 7] = calc_true_anomaly(debris_kepler[i, 1], debris_kepler[i, 2], t, debris_kepler[i, 6])
+            # Update true anomalies
+            @inbounds debris_kepler[i, 7] = calc_true_anomaly2(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 6])
 
-            p = debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2])
-            r = p / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) # radius
+            @inbounds p = debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2])
+            @inbounds r = p / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) # radius
 
             # Compute the Cartesian position vector
             @inbounds debris_cartesian[i, 1] = r * (cos(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + debris_kepler[i, 7]) - sin(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + debris_true_anoms[i]) * cos(debris_kepler[i, 3]))
@@ -222,59 +237,87 @@ function run_sim()
             @inbounds rel_pos = position_sc - debris_cartesian[i,:] # Vector from debris to spacecraft
             @inbounds abs_distance = norm(debris_cartesian[i,:] - position_sc)
             # println(abs_distance)
-            if abs_distance < 100e3 #(abs_distance > 100e3) && (abs_distance < 500e3) # abs_distance < 100e3
+            if abs_distance < 100e3 # (abs_distance > 100e3) && (abs_distance < 500e3) # abs_distance < 100e3
                 # Update spacecraft velocity
-                debris_velocity = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
+                @inbounds debris_velocity = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
 
                 # Check angle between debris tranjectory and spacecraft relative to debris
-                if sum(debris_velocity .* rel_pos) / (norm(debris_velocity) * norm(rel_pos)) > 0.5 #sqrt(3) / 2 # 0.5
+                println(sum(debris_velocity .* rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
+                if sum(debris_velocity .* rel_pos) / (norm(debris_velocity) * norm(rel_pos)) > 0.5 # sqrt(3) / 2
                     # Inside sphere and cone
-                    debris_vis[i,1] += 1
-                    debris_vis[i,2] += !debris_vis_prev[i] # Add only a pass if object was not detected in the previous timestep
-                    debris_vis_prev[i] = true
+                    @inbounds debris_vis[i,1] += 1
+                    @inbounds debris_vis[i,2] += !debris_vis_prev[i] # Add only a pass if object was not detected in the previous timestep
+                    @inbounds debris_vis_prev[i] = true
 
                     @inbounds debris_removed[i,2] = true
 
                     thrust_dir = - normalize(rel_pos) # Thrust in laser directions
-                    thrust_energy = 1000 # J
+                    thrust_energy = 100 # J
                     thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, thrust_energy, i)
                 else
                     # Inside sphere, but not cone
-                    #println("Ineffective geometry")
-                    debris_vis_prev[i] = false
+                    # println("Ineffective geometry")
+                    @inbounds debris_vis_prev[i] = false
                 end
             else
                 # Not within range
-                debris_vis_prev[i] = false
+                @inbounds debris_vis_prev[i] = false
             end
             if norm(debris_cartesian[i,:]) < (R_e + 200e3)
-                debris_removed[i,1] = true
+                @inbounds debris_removed[i,1] = true
             end
+            # Update mean anomaly
+            @inbounds n = sqrt.(mu / debris_kepler[i, 1].^3)
+            @inbounds debris_kepler[i, 6] += n * dt
         end
 
         t += dt
-        debris_counter = count(p -> (p .== true), debris_removed[:,1])
+        debris_counter = count(p -> (p .== true), debris_removed[:,2])
         push!(percentages, debris_counter / debris_n)
 
-        if mod(round(t), 1000) == 0
-            #println("--------------------------------------------")
-            #println(round((t - t0) / 3600, digits=2))
-            #println(debris_counter)
-            println(round(debris_counter / debris_n * 100, digits=3), "% / ", target_fraction * 100, "%")
-            #display(findall(i->(i .== true), debris_vis_prev))
+        if mod(round(t), 20) == 0
+            println("--------------------------------------------")
+            println(round((t - t0) / 3600, digits=2))
+            println(debris_counter)
+            println(round(debris_counter / debris_n * 100, digits=2), '%')
+            display(debris_removed)
+
+            # Visualise the orbits
+            colors = [RGB(removed, 0, 0) for removed in debris_removed[:,2]]
+            plt3d = plot(debris_cartesian[:, 1], debris_cartesian[:, 2], debris_cartesian[:, 3],
+                seriestype=:scatter,
+                markersize=4,
+                xlim=(-8000e3, 8000e3), ylim=(-8000e3, 8000e3), zlim=(-8000e3, 8000e3),
+                title="Space Debris Detection",
+                label="Debris fragment",
+                color=colors, # :black,
+                size=(1100, 1000)
+            )
+            # Spacecraft
+            scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=5, color="green", label="Spacecraft")
+            # Earth
+            phi = 0:pi / 25:2 * pi
+            theta = 0:pi / 50:pi
+            x = [R_e * cos(t) * sin(p) for t in theta, p in phi]
+            y = [R_e * sin(t) * sin(p) for t in theta, p in phi]
+            z = [R_e * cos(p) for t in theta, p in phi]
+            plot!(x, y, z, linetype=:surface, color=:blue, colorbar=false)
+
+            display(plt3d)
         end
     end
-
     return (ts, percentages, debris_vis)
 end
 
 @time (times, perc, debris_vis_stats) = run_sim()
 
-p1 = plot(times ./ 24, perc, xlabel="Time [days]", ylabel="Removal fraction [%]", legend=false, formatter=:plain)
-savefig(p1, "DebrisRemovalTime.pdf")
+p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
+savefig(p, "DebrisRemovalTime.pdf")
 
 avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
 println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
 println("Number below 29 s: ", count(p -> (p .< 29), avg_vis_times))
 h1 = histogram(avg_vis_times, xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
 savefig(h1, "DebrisVisibilityTime.pdf")
+avg_vis_times[ isnan.(avg_vis_times)] .= -Inf
+println(findmax(avg_vis_times))
