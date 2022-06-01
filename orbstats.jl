@@ -22,21 +22,19 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 100000  # number of fragments, change this number for simulation speed
+const debris_n = 100000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 5 * 24 * 60 * 60 # 5 days after collision
-const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
+const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
+# const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
+const t_end = 3600 * 24 * 365  # 1 yr
 const dt = 6
-const distance_sc = 40e3
-const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use in gaussian perturbation equations
+const distance_sc = 30e3
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
-const M_0_sc = -0.045 * pi
-
+const M_0_sc = 0
 
 
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
@@ -108,6 +106,9 @@ function run_sim(;plotResults=true)
     debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
+    collision_tracker1 = zeros(tot_debris_n, 2)
+    collision_tracker2 = zeros(Bool, tot_debris_n)
+    collision_counter = 0
 
     # J_2 effect sc
     RAAN_drift_sc = J_2_RAAN(a_sc, e_sc, i_sc) * dt
@@ -183,16 +184,22 @@ function run_sim(;plotResults=true)
             in_range = (100e3 < abs_distance < 500e3)
             @inbounds vel_norm = sqrt(debris_cartesian_vel[i,1]^2 + debris_cartesian_vel[i,2]^2 + debris_cartesian_vel[i,3]^2)
             @inbounds rel_pos_vel_pos_dot = debris_cartesian_vel[i,1] * rel_pos_x + debris_cartesian_vel[i,2] * rel_pos_y + debris_cartesian_vel[i,3] * rel_pos_z
-            in_angle = (rel_pos_vel_pos_dot / (vel_norm * abs_distance) > (sqrt(3) / 2))
+            vel_rel_pos_angle = rel_pos_vel_pos_dot / (vel_norm * abs_distance)
+            in_angle = (vel_rel_pos_angle > 20 * pi/180)
 
-            @inbounds debris_vis[i,1] += in_range * in_angle
-            @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle
-            @inbounds debris_vis_prev[i] = in_range * in_angle
+            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi*180
+            @inbounds debris_vis[i,1] += in_range * in_angle * in_tracking_ang_speed
+            @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle * in_tracking_ang_speed
+            @inbounds debris_vis_prev[i] = in_range * in_angle * in_tracking_ang_speed
+
+            in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 100) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
+            @inbounds collision_tracker1[i] += (collision_tracker2[i] ? false : true) * in_collision_range
+            @inbounds collision_tracker2[i] = in_collision_range
         end
 
         t += dt
 
-        if mod(round(t), 50) == 0
+        if mod(round(t-t0, digits=3), 3600) == 0
             println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
 
             if plotResults
@@ -242,13 +249,18 @@ function run_sim(;plotResults=true)
             end
         end
     end
-    return (debris_vis)
+    collision_counter = sum(collision_tracker1)
+    return (collision_counter)
 end
 
-@time (debris_vis_stats) = run_sim(plotResults=false)
+@time (potential_collisions) = run_sim(plotResults=false)
+
+print("Number of potential (<100km) collisions per year: ", potential_collisions)
 
 avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
 println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
 println("% of particles with visibility time below 30 s: ", count(p -> (p .< 30), avg_vis_times) / tot_debris_n * 100)
-h1 = histogram(filter(vis_time -> vis_time < 20, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h1, "DebrisVisibilityTime.pdf")
+h1 = histogram(avg_vis_times, xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+savefig(h1, "DebrisVisibilityTimeDist.pdf")
+h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+savefig(h2, "DebrisVisibilityTimeDist100.pdf")

@@ -13,7 +13,7 @@ using Statistics
 using LinearAlgebra
 using LoopVectorization
 using Plots
-const view_angles = (80, 45) # Viewing angles in azimuth and altitude
+const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 
 
 # Constants
@@ -64,19 +64,14 @@ debris_removed = zeros(Bool, tot_debris_n, 2)
 @inline function calc_true_anomaly(a, e, M)
     # Initial guess
     E = 0
-    # println("----")
-    # println(M)
 
     # Apply newton method 5x (reaches max precision after 5 iterations)
     for i = 1:5
         E = E - (E - e * sin(E) - M) / (1 - e * cos(E))
     end
-    # println(E)
 
-    # Final equation
-    true_anomaly = 2 * atan(sqrt((1 + e) / (1 - e)) * tan(E / 2))
-    # println(true_anomaly)
-    return true_anomaly
+    # Final equation for true anomaly
+    return 2 * atan(sqrt((1 + e) / (1 - e)) * tan(E / 2))
 end
 
 # TODO Perhaps pass the array into function and just fill directly
@@ -175,10 +170,8 @@ function run_sim(;plotResults=true)
     ts = Vector{Float64}(undef, 0)
     percentages = Vector{Float64}(undef, 0)
     position_sc = zeros(3)
-    debris_vis = zeros(tot_debris_n, 2) # Col1: Tot iterations visible, Col2: Number of total passes
-    debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
     vel_sc = zeros(3)
-    camera_axis_dist = zeros(tot_debris_n)
+    camera_axis_dot = zeros(tot_debris_n)
 
     sizehint!(ts, 100000);
     sizehint!(percentages, 100000);
@@ -200,8 +193,6 @@ function run_sim(;plotResults=true)
         @inbounds debris_kepler[i, 4] += RAANd * t0
         @inbounds debris_kepler[i, 5] += wd * t0
     end
-
-
 
     while (debris_counter / tot_debris_n < target_fraction)
         push!(ts, t - t0)
@@ -266,9 +257,7 @@ function run_sim(;plotResults=true)
                 if sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)) > sqrt(3) / 2
                     # Inside sphere and cone
                     println("Inside cone")
-                    @inbounds debris_vis[i,1] += 1
-                    @inbounds debris_vis[i,2] += !debris_vis_prev[i] # Add only a pass if object was not detected in the previous timestep
-                    @inbounds debris_vis_prev[i] = true
+
                     @inbounds debris_removed[i,2] = true
 
                     thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
@@ -293,28 +282,18 @@ function run_sim(;plotResults=true)
                     debris_counter += debris_removed[i,1]
                     increased_a_counter += (debris_semimajor_original[i] > a_collision)
                     break # After laser was used, skip processing the other objects in this time step
-                else
-                    # Inside sphere, but not inside cone
-                    # println("Ineffective geometry")
-                    # println("Inside sphere")
-                    @inbounds debris_vis_prev[i] = false
                 end
-            else
-                # Not within range
-                @inbounds debris_vis_prev[i] = false
             end
         end
 
         t += dt
-        # debris_counter = count(p -> (p .== true), debris_removed[:,1])
         push!(percentages, debris_counter / tot_debris_n)
 
         if mod(round(t), 50) == 0
             println("--------------------------------------------")
-            println(round((t - t0) / 3600, digits=2))
+            println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
             println(debris_counter)
             println(round(debris_counter / tot_debris_n * 100, digits=2), '%')
-            # display(debris_kepler)
 
             if plotResults
                 # Determine which debris objects are occluded
@@ -322,13 +301,13 @@ function run_sim(;plotResults=true)
                 for i in 1:tot_debris_n
                     # Compute distance of point from camera axis
                     # Resulting distance is negative if point is on the side of Earth faced away from the camera
-                    camera_axis_dist[i] = sign(dot(camera_axis, debris_cartesian[i,:]))# * norm(cross(debris_cartesian[i,:], camera_axis))
+                    camera_axis_dot[i] = dot(camera_axis, debris_cartesian[i,:])
                 end
 
                 # Debris that is occluded by Earth, drawn to make transition to behind Earth better
-                occluded = (camera_axis_dist .< 0) .&& .!debris_removed[:,1]
+                occluded = (camera_axis_dot .< 0) .&& .!debris_removed[:,1]
                 occluded_hit = occluded .&& debris_removed[:,2]
-                non_occluded = (camera_axis_dist .> 0) .&& .!debris_removed[:,1]
+                non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
                 non_occluded_hit = non_occluded .&& debris_removed[:,2]
                 
 
@@ -365,7 +344,7 @@ function run_sim(;plotResults=true)
 
                 # Spacecraft in front of Earth
                 if dot(camera_axis, position_sc) > 0
-                    scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=5, color="green", label=false)
+                    scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=10, color="green", label=false)
                 end
 
                 display(plt3d)
@@ -373,20 +352,12 @@ function run_sim(;plotResults=true)
         end
     end
     increased_a_percentage = increased_a_counter/debris_counter*100
-    return (ts, percentages, debris_vis, increased_a_percentage)
+    return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, debris_vis_stats, perc_increased_a) = run_sim(plotResults=true)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
 println("The time required for 50% is equal to ", round(time_required, digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
 savefig(p, "DebrisRemovalTime.pdf")
-
-avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
-println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
-println("Number of particles with visibility time below 29 s: ", count(p -> (p .< 29), avg_vis_times))
-h1 = histogram(filter(vis_time -> vis_time < 20, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h1, "DebrisVisibilityTime.pdf")
-avg_vis_times[isnan.(avg_vis_times)] .= -Inf
-println(findmax(avg_vis_times))
