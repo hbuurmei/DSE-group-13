@@ -22,13 +22,13 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000 # number of fragments, change this number for simulation speed
+const debris_n = 100000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
 # const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
 const t_end = 3600 * 24 * 365  # 1 yr
-const dt = 0.1
+const dt = 6
 const distance_sc = 30e3
 
 # Spacecraft variables
@@ -149,8 +149,6 @@ function run_sim(;plotResults=true)
             # f = debris_kepler[i, 7], true anomaly
 
             # Update RAAN and w due to J_2 (debris)
-            #debris_pos_before = 
-
             @inbounds debris_kepler[i, 4] += RAAN_drift[i]
             @inbounds debris_kepler[i, 5] += w_drift[i]
 
@@ -186,24 +184,22 @@ function run_sim(;plotResults=true)
             in_range = (100e3 < abs_distance < 500e3)
             @inbounds vel_norm = sqrt(debris_cartesian_vel[i,1]^2 + debris_cartesian_vel[i,2]^2 + debris_cartesian_vel[i,3]^2)
             @inbounds rel_pos_vel_pos_dot = debris_cartesian_vel[i,1] * rel_pos_x + debris_cartesian_vel[i,2] * rel_pos_y + debris_cartesian_vel[i,3] * rel_pos_z
-            in_angle = (rel_pos_vel_pos_dot / (vel_norm * abs_distance) > (sqrt(3) / 2))
+            vel_rel_pos_angle = rel_pos_vel_pos_dot / (vel_norm * abs_distance)
+            in_angle = (vel_rel_pos_angle > 20 * pi/180)
 
-            
-            #in_tracking_ang_speed = ()
-            @inbounds debris_vis[i,1] += in_range * in_angle
-            @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle
-            @inbounds debris_vis_prev[i] = in_range * in_angle
+            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi*180
+            @inbounds debris_vis[i,1] += in_range * in_angle * in_tracking_ang_speed
+            @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle * in_tracking_ang_speed
+            @inbounds debris_vis_prev[i] = in_range * in_angle * in_tracking_ang_speed
 
-            in_collision_range = (abs_distance < 100)
+            in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 100) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
             @inbounds collision_tracker1[i] += (collision_tracker2[i] ? false : true) * in_collision_range
             @inbounds collision_tracker2[i] = in_collision_range
         end
 
-        collision_counter = sum(collision_tracker1)
-
         t += dt
 
-        if mod(round(t), 50) == 0
+        if mod(round(t-t0, digits=3), 3600) == 0
             println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
 
             if plotResults
@@ -253,6 +249,7 @@ function run_sim(;plotResults=true)
             end
         end
     end
+    collision_counter = sum(collision_tracker1)
     return (collision_counter)
 end
 
