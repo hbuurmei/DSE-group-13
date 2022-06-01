@@ -22,7 +22,7 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 100000  # number of fragments, change this number for simulation speed
+const debris_n = 100000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 5 * 24 * 60 * 60 # 5 days after collision
@@ -248,5 +248,7 @@ end
 avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
 println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
 println("% of particles with visibility time below 30 s: ", count(p -> (p .< 30), avg_vis_times) / tot_debris_n * 100)
-h1 = histogram(filter(vis_time -> vis_time < 20, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h1, "DebrisVisibilityTime.pdf")
+h1 = histogram(avg_vis_times, xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+savefig(h1, "DebrisVisibilityTimeDist.pdf")
+h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+savefig(h2, "DebrisVisibilityTimeDist100.pdf")
