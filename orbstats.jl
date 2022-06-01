@@ -25,16 +25,16 @@ const h_collision = 789e3  # [m]
 const debris_n = 100000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 5 * 24 * 60 * 60 # 5 days after collision
-const t_end = t0 + 365 * 24 * 60 * 60 # Run for 100 days
-const dt = 6
-const distance_sc = 40e3
+const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
+# const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
+const t_end = 3600 * 24 * 365  # 1 yr
+const dt = 0.1
+const distance_sc = 30e3
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
-const M_0_sc = -0.045 * pi
-
+const M_0_sc = 0
 
 
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
@@ -106,6 +106,8 @@ function run_sim(;plotResults=true)
     debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
+    collision_tracker = zeros(tot_debris_n, 2)
+    collision_counter = 0
 
     # J_2 effect sc
     RAAN_drift_sc = J_2_RAAN(a_sc, e_sc, i_sc) * dt
@@ -186,7 +188,13 @@ function run_sim(;plotResults=true)
             @inbounds debris_vis[i,1] += in_range * in_angle
             @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle
             @inbounds debris_vis_prev[i] = in_range * in_angle
+
+            in_collision_range = (abs_distance < 100)
+            @inbounds collision_tracker[i, 1] += (collision_tracker[i, 2] ? false : true) * in_collision_range
+            @inbounds collision_tracker[i, 2] = in_collision_range
         end
+
+        collision_counter = sum(collision_tracker[:, 1])
 
         t += dt
 
@@ -240,13 +248,15 @@ function run_sim(;plotResults=true)
             end
         end
     end
-    return (debris_vis)
+    return (collision_counter)
 end
 
-@time (debris_vis_stats) = run_sim(plotResults=false)
+@time (potential_collisions) = run_sim(plotResults=false)
 
-avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
-println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
-println("% of particles with visibility time below 30 s: ", count(p -> (p .< 30), avg_vis_times) / tot_debris_n * 100)
-h1 = histogram(filter(vis_time -> vis_time < 20, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h1, "DebrisVisibilityTime.pdf")
+print("Number of potential (<100km) collisions per year: ", potential_collisions)
+
+# avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
+# println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
+# println("% of particles with visibility time below 30 s: ", count(p -> (p .< 30), avg_vis_times) / tot_debris_n * 100)
+# h1 = histogram(filter(vis_time -> vis_time < 20, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+# savefig(h1, "DebrisVisibilityTime.pdf")
