@@ -22,7 +22,7 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 100000 # number of fragments, change this number for simulation speed
+const debris_n = 1000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
@@ -106,7 +106,8 @@ function run_sim(;plotResults=true)
     debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
-    collision_tracker = zeros(tot_debris_n, 2)
+    collision_tracker1 = zeros(tot_debris_n, 2)
+    collision_tracker2 = zeros(Bool, tot_debris_n)
     collision_counter = 0
 
     # J_2 effect sc
@@ -148,6 +149,8 @@ function run_sim(;plotResults=true)
             # f = debris_kepler[i, 7], true anomaly
 
             # Update RAAN and w due to J_2 (debris)
+            #debris_pos_before = 
+
             @inbounds debris_kepler[i, 4] += RAAN_drift[i]
             @inbounds debris_kepler[i, 5] += w_drift[i]
 
@@ -185,16 +188,18 @@ function run_sim(;plotResults=true)
             @inbounds rel_pos_vel_pos_dot = debris_cartesian_vel[i,1] * rel_pos_x + debris_cartesian_vel[i,2] * rel_pos_y + debris_cartesian_vel[i,3] * rel_pos_z
             in_angle = (rel_pos_vel_pos_dot / (vel_norm * abs_distance) > (sqrt(3) / 2))
 
+            
+            #in_tracking_ang_speed = ()
             @inbounds debris_vis[i,1] += in_range * in_angle
             @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle
             @inbounds debris_vis_prev[i] = in_range * in_angle
 
             in_collision_range = (abs_distance < 100)
-            @inbounds collision_tracker[i, 1] += (collision_tracker[i, 2] ? false : true) * in_collision_range
-            @inbounds collision_tracker[i, 2] = in_collision_range
+            @inbounds collision_tracker1[i] += (collision_tracker2[i] ? false : true) * in_collision_range
+            @inbounds collision_tracker2[i] = in_collision_range
         end
 
-        collision_counter = sum(collision_tracker[:, 1])
+        collision_counter = sum(collision_tracker1)
 
         t += dt
 
