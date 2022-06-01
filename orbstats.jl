@@ -26,11 +26,9 @@ const debris_n = 100000  # number of fragments, change this number for simulatio
 
 const a_collision = R_e + h_collision
 const t0 = 5 * 24 * 60 * 60 # 5 days after collision
-const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
+const t_end = t0 + 365 * 24 * 60 * 60 # Run for 100 days
 const dt = 6
 const distance_sc = 40e3
-const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use in gaussian perturbation equations
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
