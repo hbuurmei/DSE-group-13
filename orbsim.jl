@@ -25,18 +25,19 @@ const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 0 #72 * 100 * 60
+const t0 = 72 * 100 * 60  # 5 days
 const dt = 6
 const cooldown_time = 180 # seconds, should be an integer multiple of dt
-const distance_sc = 30e3
+const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV use in gaussian perturbation equations
+const FoV = 48 * pi / 180  # [rad]
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
 const M_0_sc = 0
-
+const laser_pointing_angle = acos(a_collision/a_sc)  # [rad]
 
 
 
@@ -199,10 +200,11 @@ function run_sim(;plotResults=true)
         RAAN_sc += RAAN_drift_sc
         w_sc += w_drift_sc
 
-        # Compute spacecraft position
+        # Compute spacecraft position and velocity
         n_sc = sqrt(mu / a_sc^3)
         true_anomaly_sc = calc_true_anomaly(a_sc, e_sc, n_sc * t + M_0_sc)
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
+        vel_sc = calc_vel(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
 
         # Update space debris position
         @turbo for i = 1:tot_debris_n
@@ -250,13 +252,15 @@ function run_sim(;plotResults=true)
                 # Update spacecraft velocity
                 @inbounds debris_cartesian_vel[i,:] = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
                 
-
                 # Check angle between debris tranjectory and spacecraft relative to debris
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
                 @inbounds vel_rel_pos_angle = acos(sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)))
                 incidence_condition = vel_rel_pos_angle < 20 * pi/180
                 @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
-                if incidence_condition && angvel_condition
+                rotation_vector = cross(position_sc, -vel_sc) / norm(cross(position_sc, -vel_sc))
+                pointing_vector = -vel_sc.*cos(laser_pointing_angle) + cross(rotation_vector, -vel_sc).*sin(laser_pointing_angle) + rotation_vector.*(dot(rotation_vector, -vel_sc)*(1-cos(laser_pointing_angle)))
+                FoV_condition = 0 < dot(pointing_vector, -rel_pos)/(norm(pointing_vector) * norm(-rel_pos)) < cos(FoV/2)
+                if incidence_condition && angvel_condition && FoV_condition
                     # Inside sphere and cone
                     # println("Inside cone")
 
@@ -357,10 +361,10 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
 println("The time required for 50% is equal to ", round(time_required, digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
-savefig(p, "DebrisRemovalTime.pdf")
+# savefig(p, "DebrisRemovalTime.pdf")
