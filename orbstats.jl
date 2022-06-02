@@ -22,12 +22,11 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 100000 # number of fragments, change this number for simulation speed
+const debris_n = 1000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
-# const t_end = t0 + 20 * 24 * 60 * 60 # Run for 100 days
-const t_end = 3600 * 24 * 365  # 1 yr
+const t_end = t0 + 183 * 24 * 60 * 60 # Run for 100 days
 const dt = 6
 const distance_sc = 30e3
 
@@ -102,7 +101,7 @@ function run_sim(;plotResults=true)
     w_sc = J_2_w(a_sc, e_sc, i_sc) * t0
     RAAN_sc = mean(debris_kepler[:, 4]) + J_2_RAAN(a_sc, e_sc, i_sc) * t0
     position_sc = zeros(3)
-    debris_vis = zeros(tot_debris_n, 2) # Col1: Tot iterations visible, Col2: Number of total passes
+    debris_vis = zeros(tot_debris_n, 4) # Col1: Number of total passes, Col2: Tot iterations visible, Col3: Max iterations visible in one go, Col4: Amount of visible iterations subsequently
     debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
@@ -181,25 +180,37 @@ function run_sim(;plotResults=true)
             @inbounds debris_cartesian_vel[i,2] = (debris_cartesian[i,2] * h * debris_kepler[i, 2] / (r * p)) * sin(debris_kepler[i, 7]) - (h / r) * (sin(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + debris_kepler[i, 7]) - cos(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + debris_kepler[i, 7]) * cos(debris_kepler[i, 3]))
             @inbounds debris_cartesian_vel[i,3] = (debris_cartesian[i,3] * h * debris_kepler[i, 2] / (r * p)) * sin(debris_kepler[i, 7]) + (h / r) * (cos(debris_kepler[i, 5] + debris_kepler[i, 7]) * sin(debris_kepler[i, 3]))
 
-            in_range = (100e3 < abs_distance < 500e3)
+            in_range = (abs_distance < 250e3)
             @inbounds vel_norm = sqrt(debris_cartesian_vel[i,1]^2 + debris_cartesian_vel[i,2]^2 + debris_cartesian_vel[i,3]^2)
             @inbounds rel_pos_vel_pos_dot = debris_cartesian_vel[i,1] * rel_pos_x + debris_cartesian_vel[i,2] * rel_pos_y + debris_cartesian_vel[i,3] * rel_pos_z
-            vel_rel_pos_angle = rel_pos_vel_pos_dot / (vel_norm * abs_distance)
-            in_angle = (vel_rel_pos_angle > 20 * pi/180)
+            vel_rel_pos_angle = acos(rel_pos_vel_pos_dot / (vel_norm * abs_distance))
+            in_angle = (vel_rel_pos_angle > 20 * pi / 180)
 
-            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi*180
-            @inbounds debris_vis[i,1] += in_range * in_angle * in_tracking_ang_speed
-            @inbounds debris_vis[i,2] += (debris_vis_prev[i] ? false : true) * in_range * in_angle * in_tracking_ang_speed
-            @inbounds debris_vis_prev[i] = in_range * in_angle * in_tracking_ang_speed
+            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi * 180
+            vis_condition = in_range * in_angle * in_tracking_ang_speed
+            
+            # Track number of passes (how many times the visibility state changes from non-visible to visible)
+            @inbounds debris_vis[i,1] += (debris_vis_prev[i] ? false : true) * vis_condition
+            
+            # Track number of iterations for which all visibility conditions are met
+            @inbounds debris_vis[i,2] += vis_condition
 
-            in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 100) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
+            # Track the number of visible time steps in sequence and reset to 0 when non-visible
+            # 0 is base value
+            # vis_condition * (debris_vis[i,4] + 1), one is added if visible this frame, if not visible, count is reset to 0
+            @inbounds debris_vis[i,4] = 0 + vis_condition * (debris_vis[i,4] + 1)
+            @inbounds debris_vis[i,3] = (debris_vis[i,4] > debris_vis[i,3]) ? debris_vis[i,4] : debris_vis[i,3]
+
+            @inbounds debris_vis_prev[i] = vis_condition
+
+            in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 1000) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
             @inbounds collision_tracker1[i] += (collision_tracker2[i] ? false : true) * in_collision_range
             @inbounds collision_tracker2[i] = in_collision_range
         end
 
         t += dt
 
-        if mod(round(t-t0, digits=3), 3600) == 0
+        if mod(round(t - t0, digits=3), 3600) == 0
             println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
 
             if plotResults
@@ -250,17 +261,23 @@ function run_sim(;plotResults=true)
         end
     end
     collision_counter = sum(collision_tracker1)
-    return (collision_counter)
+    return (debris_vis, collision_counter)
 end
 
-@time (potential_collisions) = run_sim(plotResults=false)
+@time (debris_vis_stats, potential_collisions) = run_sim(plotResults=false)
 
-print("Number of potential (<100km) collisions per year: ", potential_collisions)
+println("Number of potential (<100km) collisions per year: ", potential_collisions)
 
-avg_vis_times = debris_vis_stats[:,1] .* dt ./ debris_vis_stats[:,2]
+avg_vis_times = debris_vis_stats[:,2] .* dt ./ debris_vis_stats[:,1]
+max_vis_times = debris_vis_stats[:,3] .* dt
 println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
-println("% of particles with visibility time below 30 s: ", count(p -> (p .< 30), avg_vis_times) / tot_debris_n * 100)
-h1 = histogram(avg_vis_times, xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h1, "DebrisVisibilityTimeDist.pdf")
+println("% of particles with average visibility time below 50 s: ", count(p -> (p .< 50), avg_vis_times) / tot_debris_n * 100)
+println("% of particles with max visibility time below 50 s: ", count(p -> (p .< 50), max_vis_times) / tot_debris_n * 100)
+h1 = histogram(filter(vis_time -> vis_time < 2000, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=80, legend=false)
+savefig(h1, "DebrisAvgVisTimeDist.pdf")
 h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h2, "DebrisVisibilityTimeDist100.pdf")
+savefig(h2, "DebrisAvgVisTimeDist100.pdf")
+h3 = histogram(filter(vis_time -> vis_time < 2000, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=80, legend=false)
+savefig(h3, "DebrisAvgVisTimeDist.pdf")
+h4 = histogram(filter(vis_time -> vis_time < 100, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+savefig(h4, "DebrisAvgVisTimeDist100.pdf")
