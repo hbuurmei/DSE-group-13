@@ -1,0 +1,280 @@
+% --------------- written by risks.py from risks.csv ---------------
+\begin{center}
+\begin{longtable}{p{0.5cm}p{1.5cm}p{14cm}}
+    \caption{Technical risks.}\\
+    \toprule
+    \multicolumn{1}{c}{\textbf{NB}}& \textbf{Risk ID} & \textbf{Description} \\
+    \midrule
+    \midrule
+    \multicolumn{3}{c}{\textit{Mission Resources}} \\
+    \midrule
+    \midrule
+    1 & SS-TL-MI-RISK-MR-COST-001 & \textbf{R\&D cost overruns} may occur due to the novelty of the spacecraft under consideration. Unexpected difficulties might arise in the design, yielding delays and therefore cost overruns. This is particularly likely for the integration and design of a space-grade laser (never been done before) and the GNC subsystem (higher than usual requirements). \newline \makecell{
+    \textit{Likelihood:} Likely |
+    \textit{Consequence:} Moderate} \\
+    \midrule
+    2 & SS-TL-MI-RISK-MR-COST-002 & \textbf{Integration cost overruns} can occur for non-COTS components which require recent or usually unused manufaturing processes (and therefore reults in difficulties in the manufacturing process). Due to the innofative character of the mission, this is a possible event, however, its consequence is minor compared to the development cost overruns. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    3 & SS-TL-MI-RISK-MR-COST-003 & \textbf{Operations cost overruns} are a result of extended operational time of the mission. For the Space Sweeper mission, this would be the result of worse than expected capabilities of the system to clean up the space debris. This risk is less likely than R\&D cost overruns, however, as careful V\&V can be performed on the system. The consequence is always significant as the ground operation contracts and the ground team would need to be extended (violating the cost requirements). \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    4 & SS-TL-MI-RISK-MR-SCH-001 & \textbf{R\&D schedule overruns} occur in case difficulties arise in the design process, similarly to SS-TL-MI-RISK-MR-COST-001. As this risk is always often linked to the cost overruns described above, this risk is likely due to the novelty of the mission. Furthermore, such delays would have a moderate effect on the mission, as SS-TL-STK-US-REQ-MI-001 (“The system shall be operational before the end of 2028.”) might not be satisfied, but the primary objective might still be met with delays. \newline \makecell{
+    \textit{Likelihood:} Likely |
+    \textit{Consequence:} Moderate} \\
+    \midrule
+    5 & SS-TL-MI-RISK-MR-SCH-002 & \textbf{Integration schedule overruns} can occur from bad project management or a lack in experience regarding performing integration. Those schedule overruns are commonly less significant than the ones presented in SS-TL-MI-RISK-MR-SCH-001 and can be easily avoided using good project management practices, making it unlikely. Furthermore, for the system to be usable within a few weeks time from a collision or explosion, it would need to be produced ahead of time and stored, meaning that small integration schedule overruns would result in less storage time. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    6 & SS-TL-MI-RISK-MR-SCH-003 & \textbf{Operations schedule overruns} are directly correlated with SS-TL-MI-RISK-MR-COST-003, as operations cost overruns arise from extending contracts with the ground station, which themselves arise from schedule overruns. They therefore have the same likelihood and consequence. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    \midrule
+    \multicolumn{3}{c}{\textit{System Malfunctions}} \\
+    \midrule
+    \midrule
+    7 & SS-SYS-TC-RISK-001 & \textbf{Loss of contact} would most likely result from a failure of the TT\&C subsystem on board rather than on the ground segment. This might in the loss of the spacecraft and a mission failure, which is severe. It is however an unlikely occurrence as the technology (TRL 9) is now well known and COTS components can be used and thoroughly tested. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    8 & SS-SYS-EPS-RISK-001 & \textbf{Power lines failure} of either the spacecraft bus or the payload could occur due to vibrations during the launch and would result in a mission failure (severe). This is however very unlikely as those connections can be thoroughly tested, making the risk easily avoidable. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    9 & SS-SYS-EPS-RISK-002 & \textbf{Electrical battery failure} would result in non-nominal operations of the spacecraft during eclipse times (significant). This is, however, an unlikely scenario due to the high Technology Readiness Level (TRL) of the COTS energy storage devices. Furthermore, this can be controlled through parameters such as the Depth of Discharge (DoD) and prevented using redundancy. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    10 & SS-SYS-EPS-RISK-003 & \textbf{Failure of solar arrays} would result in a complete mission failure. Knowing that the solar arrays for the laser station are expected to very large compared to usual satellites, more deployment mechanisms are expected. According to \cite[p.8]{tafazoli2009study}, solar array failures are responsible for 49\% of failures of the power subsystem, 48\% of those in the first year, mainly due to mechanisms which can be prevented through careful testing. This risk is therefore unlikely, but severe, as \cite[p.8]{tafazoli2009study} outlines that in 45\% of the cases, such power failure results in a loss of mission. Additionally, solar panels degrade significantly in space, however, this risk is well known and can be controlled successfully from the experience of past missions. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    11 & SS-SYS-EPS-RISK-004 & \textbf{EPS does not initialise} would result in a complete mission failure as no power would be provided to any subsystem (the spacecraft is lost). This is, however, a very unlikely occurrence. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    12 & SS-SYS-TH-RISK-001 & \textbf{Overheating or overcooling of any subsystem} can occur in the scenario of a failure of the thermal subsystem. Depending on the concerned subsystem, the severity could range from moderate to severe, as all components have specific temperature application ranges. Such failure is generally very unlikely as it rarely happens \cite[p.11]{tafazoli2009study}, however they are significant for a laser station due to the expected large amount of heat to be managed from the use of a laser. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    13 & SS-SYS-STR-RISK-001 & \textbf{Structural failure during launch} results in the loss of structural integrity, which is significant as it can be mission-critical. NASA reported that this occurs in about 6\% of missions for small satellites, which is not very likely \cite{NASAFailures}. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    14 & SS-SYS-STR-RISK-002 & \textbf{Structural failure in orbit} results in the loss of structural integrity, which is significant as it can be mission-critical. NASA reported that this occurs in about 6\% of missions for small satellites, which is not very likely. \cite{NASAFailures} \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    15 & SS-SYS-PROP-RISK-001 & \textbf{Propellant leakage} may occur during operations, resulting in the propellant being exposed to vacuum. The propellant may interfere with other subsystems/electronics. It is likely that the majority of the propulsion subsystem will be COTS, drastically decreasing the likelihood of experiencing a leakage. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Moderate} \\
+    \midrule
+    16 & SS-SYS-PROP-RISK-002 & \textbf{(re-)Ignition failure} is very unlikely in most spacecraft propulsion systems, since not all propulsion techniques need a separate ignition system. However, in case this risk is relevant to the spacecraft, the results will be significant, since propulsion a critical system for orbit maintenance and/or momentum dumping, thus decreasing the operational lifetime. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    17 & SS-SYS-CDHS-RISK-001 & \textbf{Failure of data storage module} would result in the loss of all on-board data. Usually, the system stores data from the payload, thermal subsystem, ADCS, and general system health on board, and sends this data to the ground segment in batches. If the data storage module is permanently disfunctioning, it means that no data can be sent to Earth anymore. Without any information flow from the system to the ground control, the success of the mission cannot be guaranteed. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    18 & SS-SYS-CDHS-RISK-002 & \textbf{Transceiver readouts are incorrectly converted} may occur due to a coding error, which is easily avoidable through rigorous code verification. This would lead to a loss of data unless corrective conversion methods are adopted. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    19 & SS-SYS-CDHS-RISK-003 & \textbf{Software malfunction} is one of the most difficult problems to deal with, due to the complexity and size of software programs. Since software issues may be difficult to detect, and may have large consequences, this is a critical risk in any engineering project. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    20 & SS-SYS-GNC-RISK-001 & \textbf{Failure of an attitude determination sensor} may result in lack of knowledge of the spacecraft's attitude, and thus an inability to point the antenna (if any), solar panels, and the laser. It really depends on the type of attitude determination, though, as a gyroscope is significantly more likely to fail than a Sun sensor or star sensor. However, according to \cite[p.7]{tafazoli2009study}, those failures are around 10\% less critical than for other subsystems as redundancy can be used. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    21 & SS-SYS-GNC-RISK-002 & \textbf{Failure of an attitude control actuator} is more likely than a failure in attitude determination sensors, due to the often dynamic nature of attitude control actuators \cite[p.7]{tafazoli2009study}. The result is similar to a failure of attitude determination, since the system ends up unable to point itself. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    22 & SS-SYS-GNC-RISK-003 & \textbf{Failure of orbital positioning system} is possible to occur according to \cite{tafazoli2009study}; it is generally more likely to occur than other subsystem failures, and results in a 30\% chance of a mission failure \cite{tafazoli2009study}. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    23 & SS-TL-MI-RISK-INT-001 & \textbf{Material defects} are generally not removable during manufacturing, since the defects are related to the internal structure of a material. This may happen if the half-fabricates are of insufficient quality and that this is not detected during inspection. The consequence may be a decrease in structural rigidity. However, only relatively small defects may be overseen by quality control, and these have little to no significant impact on the system performance. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    24 & SS-TL-MI-RISK-INT-002 & \textbf{Part manufacturing defects} may occur if improper manufacturing is carried out. Because the system has a low product series, it is possible to perform quality control on every single component in the system. It is therefore very unlikely that defects are not detected. In case a defect is not detected, it can detrimental to the alignment of some components (e.g. a reaction wheel, making it more difficult to manoeuvre), or structural rigidity of the spacecraft (e.g. during the launch). Meaning that an undetected defect has a significant impact on the mission. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    25 & SS-TL-MI-RISK-INT-003 & \textbf{Assembly defects} lead to separation of parts in operation, which has moderate structural consequences, especially during launch vibrations. Pointing accuracy of subsystems is also critical and requires a rigid spacecraft, although improper fastening is unlikely. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    26 & SS-SYS-MECH-RISK-001 & \textbf{Failure of deployment mechanism} mostly results in partial loss of spacecraft or loss of mission, or a negligible effect on the mission performance, according to \cite[p.5]{rivera2021study}. Meaning that the risk is severe (taking worst case scenario). Note that, while the solar arrays' deployment was already considered in SS-SYS-EPS-RISK-003, other mechanisms (such as the antenna deployment) can be as critical. Furthermore, \cite[p.3]{rivera2021study} shows that the number of failures due to mechanisms has significantly decreased with respect to the increasing number of launched spacecrafts (making the risk unlikely). \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    27 & SS-SYS-GS-RISK-001 & \textbf{Human error} can occur in various forms; its consequence depends highly on the situation. Designs should always account for human error as it is somewhat inevitable, but risks prone to such error are not severe. \newline \makecell{
+    \textit{Likelihood:} Very Likely |
+    \textit{Consequence:} Moderate} \\
+    \midrule
+    28 & SS-SYS-GS-RISK-002 & \textbf{Failure in pointing of the GS antenna dish pointing} is very unlikely due to the regular maintenance performed. Furthermore, it also has a minor impact on the mission, as it can quickly be repaired by the ground team. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    \midrule
+    \multicolumn{3}{c}{\textit{Environmental Risks}} \\
+    \midrule
+    \midrule
+    29 & SS-TL-MI-RISK-ENV-001 & \textbf{Environmental Degradation of Hardware Components} occurs in most satellite surfaces due to corrosion and damage from atomic oxygen in LEO, though this is not critical for this short lifetime mission. \newline \makecell{
+    \textit{Likelihood:} Likely |
+    \textit{Consequence:} Minor} \\
+    \midrule
+    30 & SS-TL-MI-RISK-ENV-002 & \textbf{Single event upset due to magnetic environment} may affect the system's electronics. According to \cite{tafazoli2009study}, magnetic storms may occur. In case a system failure occurs due to the environment, it is due to a magnetic storm in 3\% of the cases \cite{tafazoli2009study}. The consequence is a single event effect, e.g., affecting single components in electronic systems. In case there is no solid failure detection system, these issues can have significant consequences. \newline \makecell{
+    \textit{Likelihood:} Very Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    31 & SS-TL-MI-RISK-ENV-003 & \textbf{Electrostatic (dis)charge due to electrical environment} , especially during the assembly, integration, and testing phases, may include the accumulation of electrostatic charge on the system. Once deployed, electrostatic discharge may occur, which can affect electronics and antennas \cite{mourra2008european}. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    32 & SS-TL-MI-RISK-ENV-004 & \textbf{Solar storms} have similar effects as magnetic storms, namely causing single event effects \cite{tafazoli2009study}. The consequence is therefore the same as for magnetic storms, but the likelihood is higher. According to \cite{tafazoli2009study}, solar storms account for eight percent of all environment related failures. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    \midrule
+    \multicolumn{3}{c}{\textit{Mission Objective related Risks}} \\
+    \midrule
+    \midrule
+    34 & SS-TL-MI-RISK-ENV-005 & \textbf{System collision with debris} is very likely, as the system will be launched in an orbit with high debris density. Furthermore, the consequence can be severe as the space debris originating from a collision or explosion are still large chunks right after the accident and the spacecraft is expected to have a large solar panel area. \newline \makecell{
+    \textit{Likelihood:} Very Likely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    35 & SS-SYS-PL-RISK-001 & \textbf{Failure of debris detection system} could arise due to damage to the payload sensors or an error in the design. This is an unlikely event due to the extensive V\&V and certification procedures that are usually put in place in the design process. The consequence is severe for the laser method. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    36 & SS-SYS-PL-RISK-002 & \textbf{Mistaking an active satellite for a debris} (or hitting an active satellite while aiming at a debris) is unlikely, given that ground-operations should check the target object when it exceeds a certain size. This event would result in drastic legal repercussions and failure of not just one, but two space missions. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    37 & SS-SYS-PL-RISK-003 & \textbf{Lower capability of debris removal than expected} is possible due to the novel character of the mission and the low TRL of the concept, which is to be raised in the development process. There are however always some uncertainties when a particular function is performed for the first time, and the system might underperform. The consequence depends on the degree of underperformance, however. It is further noted that this type of consequence is of different nature than for other risks, as it directly impacts the capacity of the mission to perform its primary mission, rather than an activity supposed to sustain this primary objective. It is therefore more fundamental to mitigate than other risks. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Significant} \\
+    \midrule
+    38 & SS-SYS-PL-RISK-004 & \textbf{Hacking} may cause the laser to become a weapon aiming at the Earth to injure people on the ground, which could be coveted by hostile parties, yielding a risk of the spacecraft being hacked to misuse the Space Sweeper. This risk is considered severe it would result in a direct mission failure (unable to continue the clean-up mission), and could result in injuries and deaths of the people on the ground. It is, however, unlikely as security will be taken very seriously in the design. \newline \makecell{
+    \textit{Likelihood:} Unlikely |
+    \textit{Consequence:} Severe} \\
+    \midrule
+    39 & SS-SYS-PL-RISK-005 & \textbf{Ground injuries} could happen by accident (excluding hacking) in case the Earth enters the shooting angle of the laser while tracking a debris. In case ground injuries can be linked to the Space Sweeper, the operating institutions and the mission legitimacy could be put at risk (severe consequence). This is a possible occurrence, depending on the laser type and associated atmospheric attenuation. \newline \makecell{
+    \textit{Likelihood:} Possible |
+    \textit{Consequence:} Severe} \\
+    \bottomrule
+    \label{tab:technical_risks}
+\end{longtable}
+\end{center}
+
+\renewcommand{\arraystretch}{1.1} %stretches row height
+\begin{table}[tb]
+\centering
+\caption{\label{tab:risk_pre_mitigation} Technical risk matrix pre-mitigation.}\resizebox{\textwidth}{!}
+{\begin{tabular}{|p{2.2cm}|p{1.6cm}|p{1.9cm}|p{2.4cm}|p{2.7cm}|p{2.5cm}|}\hline
+& \textbf{Negligible} & \textbf{Minor} & \textbf{Moderate} & \textbf{Significant} & \textbf{Severe} \\ \hline
+\textbf{Very Likely} & \cellcolor{lightgreen}  & \cellcolor{lightyellow}  & \cellcolor{lightorange} 27 & \cellcolor{lightred}  & \cellcolor{lightred} 34 \\ \hline
+\textbf{Likely} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 29 & \cellcolor{lightyellow} 1, 4 & \cellcolor{lightorange}  & \cellcolor{lightred}  \\ \hline
+\textbf{Possible} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 2, 23 & \cellcolor{lightyellow}  & \cellcolor{lightorange} 3, 6, 19, 21, 22, 31, 37 & \cellcolor{lightorange} 39 \\ \hline
+\textbf{Unlikely} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 5, 18 & \cellcolor{lightgreen}  & \cellcolor{lightyellow} 9, 13, 20, 25, 32, 35 & \cellcolor{lightorange} 7, 10, 26, 36, 38 \\ \hline
+\textbf{Very Unlikely} & \cellcolor{forestgreen}  & \cellcolor{forestgreen} 28 & \cellcolor{lightgreen} 15 & \cellcolor{lightyellow} 12, 14, 16, 24, 30 & \cellcolor{lightyellow} 8, 11, 17 \\ \hline
+\end{tabular}
+}
+\end{table}
+\renewcommand{\arraystretch}{1} %stretches row height
+\begin{center}
+\begin{longtable}{p{0.5cm}p{15cm}}
+    \caption{Mitigation of technical risks.}\\
+    \toprule
+    \multicolumn{1}{c}{\textbf{Risk NB}}& \textbf{Description \& Mitigation Plan} \\
+    \midrule
+    3 & \textbf{Operations cost overruns:} all operations risks depend on the ability of the system to remove the debris within a given amount of time (depending on the time allocated to the primary and secondary mission). This can be carefully evaluated through simulations (V\&V of the laser system to evaluate its capability to remove the 50\% of the debris between 1 and 10 cm in the orbit of choice (SS-TL-STK-US-REQ-STB-002). Additional sources of risk linked to operations cost and schedule overruns are directly related to Project Management and Systems Engineering (PM\&SE). However, despite good PM\&SE practices, most space projects fail to meet the planned budgets and schedules due to the common thinking that those projects are “too big to fail” and that the technological and scientific outcomes outweigh the delays and cost overruns \footnote{URL: \url{https://spectrum.ieee.org/gao-warns-of-deteriorating-costs-and-schedules-in-nasas-major-project-portfolio} [Accessed on 21-05-2022]}. However, the design team is very aware of the budget and schedule limitations, and all available practices will be put in place to ensure that the Space Sweeper mission is a successful, within the cost and schedule constraints. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    6 & \textbf{Operations schedule overruns:} same strategy as SS-TL-MI-RISK-MR-COST-003.  \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    7 & \textbf{Loss of contact:} in the case of an on-board communication failure, the mitigation strategy should be applied to the spacecraft, not the ground system. Redundancy in the telecommunication system decreases the consequence of a loss of contact as the backup component could take over and contact would be retrieved. \newline \makecell{
+    \textit{Likelihood:} Unlikely $\rightarrow$ Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Moderate} \\
+    \midrule
+    10 & \textbf{Failure of solar arrays:} shall be addressed by means of extensive testing as standard procedures suggest. However, it can further be mitigated through redundancy (reducing the consequence) and adding additional safety factors in the design (reducing the likelihood). \newline \makecell{
+    \textit{Likelihood:} Unlikely $\rightarrow$ Very Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Significant} \\
+    \midrule
+    19 & \textbf{Software malfunction:} can be tackled through modularisation (to limit propagation), implementing fault detection containments and recovery mechanisms, and software redundancy (reducing the consequence). \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Possible |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    21 & \textbf{Failure of an attitude control actuator:} can be made more reliable by introducing redundancy. This decreases the consequence, since one element of the subsystem can fail without obstructing nominal operations. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    22 & \textbf{Failure of orbital positioning system:} same strategy as SS-SYS-GNC-RISK-002. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    26 & \textbf{Failure of deployment mechanism:} same strategy as SS-SYS-EPS-RISK-003. \newline \makecell{
+    \textit{Likelihood:} Unlikely $\rightarrow$ Very Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Significant} \\
+    \midrule
+    27 & \textbf{Human error:} can be mitigated by a form of redundancy. No single person should be the only one to work on any element of the mission. The lead of a mission element shall ensure that quality control (checking the work of colleagues) is performed. \newline \makecell{
+    \textit{Likelihood:} Very Likely $\rightarrow$ Possible |
+    \textit{Consequence:} Moderate $\rightarrow$ Moderate} \\
+    \midrule
+    31 & \textbf{Electrostatic (dis)charge due to electrical environment:} can occur due to improper assembly, integration and testing. One should remove accumulated charge from non-conductive components, or this could also be prevented by implementing electrical grounding in the design. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Very Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Significant} \\
+    \midrule
+    34 & \textbf{System collision with debris:} it is uncommon to purposefully send a spacecraft to a debris-rich orbit, which makes this risk more challenging. However, this risk is very predictable, since it is known from the first day of the design that this will pose an issue for space-based designs. As long as this risk is given priority during the design phase, the likelihood that the design will not be able to withstand this situation reduces to possible (debris avoidance could also be implemented by design). By structurally shielding the spacecraft against debris, the consequence can be reduced to moderate, since the smaller debris particles have no significant consequence any more. \newline \makecell{
+    \textit{Likelihood:} Very Likely $\rightarrow$ Possible |
+    \textit{Consequence:} Severe $\rightarrow$ Moderate} \\
+    \midrule
+    36 & \textbf{Mistaking an active satellite for a debris:} at the start of the mission, the target orbit should be analysed by the ground segment to check whether any active satellites are present. In the case a satellite is present, the ground segment should monitor it and communicate the location of this satellite to the Space Sweeper spacecraft. \newline \makecell{
+    \textit{Likelihood:} Unlikely $\rightarrow$ Very Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Severe} \\
+    \midrule
+    37 & \textbf{Lower capability of debris removal than expected:} same strategy as SS-TL-MI-RISK-MR-COST-003. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Significant $\rightarrow$ Moderate} \\
+    \midrule
+    38 & \textbf{Hacking:} is expected to be a significant risk for the mission due to its potential to become a weapon \footnotemark[1] to either take down satellites from enemies or harm people on the ground. This can be mitigated by putting cybersecurity on the forefront in the communication and software architectures and implementation (using encryption, physically protecting the GS, etc. \footnotemark[2]), which would reduce the likelihood. However, some cases of hacking of satellites occurred through vulnerabilities of computers used in the ground station, meaning that those should be subject to regular maintenance, and be up-to-date with respect to all relevant pieces of software. It is therefore also important that the ground team is aware of this risk. Furthermore, measures ensuring that the spacecraft enters the EoL procedure automatically if an illicit authentication is identified, can be implemented. Additionally, strong passwords to be changed regularly (similar to nuclear codes) should be used to enter any communication with the spacecraft. \newline \makecell{
+    \textit{Likelihood:} Unlikely $\rightarrow$ Very Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Moderate} \\
+    \midrule
+    39 & \textbf{Ground injuries:} can be prevented by avoided by turning the laser off if it detects the Earth in its shooting angle (dropping the likelihood to very unlikely). Another way to cope with the risk is to ensure that atmospheric dissipation is strong enough to render the laser harmless with respect to ground injuries, arguably reducing the severity of the injuries and therefore the consequence (to moderate), as the effects would hardly be noticed and traceable to the operating institutions. \newline \makecell{
+    \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
+    \textit{Consequence:} Severe $\rightarrow$ Moderate} \\
+    \bottomrule
+    \label{tab:risk_mitigation}
+\end{longtable}
+\end{center}
+
+\renewcommand{\arraystretch}{1.1} %stretches row height
+\begin{table}[tb]
+\centering
+\caption{\label{tab:risk_post_mitigation} Technical risk matrix post-mitigation.}\resizebox{\textwidth}{!}
+{\begin{tabular}{|p{2.2cm}|p{1.6cm}|p{1.9cm}|p{2.4cm}|p{2.7cm}|p{2.5cm}|}\hline
+& \textbf{Negligible} & \textbf{Minor} & \textbf{Moderate} & \textbf{Significant} & \textbf{Severe} \\ \hline
+\textbf{Very Likely} & \cellcolor{lightgreen}  & \cellcolor{lightyellow}  & \cellcolor{lightorange}  & \cellcolor{lightred}  & \cellcolor{lightred}  \\ \hline
+\textbf{Likely} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 29 & \cellcolor{lightyellow} 1, 4 & \cellcolor{lightorange}  & \cellcolor{lightred}  \\ \hline
+\textbf{Possible} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 2, 23 & \cellcolor{lightyellow} 19, 27, 34 & \cellcolor{lightorange}  & \cellcolor{lightorange}  \\ \hline
+\textbf{Unlikely} & \cellcolor{forestgreen}  & \cellcolor{lightgreen} 5, 18 & \cellcolor{lightgreen} 3, 6, 7, 21, 22, 37, 39 & \cellcolor{lightyellow} 9, 13, 20, 25, 32, 35 & \cellcolor{lightorange}  \\ \hline
+\textbf{Very Unlikely} & \cellcolor{forestgreen}  & \cellcolor{forestgreen} 28 & \cellcolor{lightgreen} 15, 38 & \cellcolor{lightyellow} 10, 12, 14, 16, 24, 26, 30, 31 & \cellcolor{lightyellow} 8, 11, 17, 36 \\ \hline
+\end{tabular}
+}
+\end{table}
+\renewcommand{\arraystretch}{1} %stretches row height
+% ------------------------------------------------------------------
