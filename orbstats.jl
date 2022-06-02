@@ -186,7 +186,7 @@ function run_sim(;plotResults=true)
             vel_rel_pos_angle = acos(rel_pos_vel_pos_dot / (vel_norm * abs_distance))
             in_angle = (vel_rel_pos_angle > 20 * pi / 180)
 
-            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi * 180
+            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
             vis_condition = in_range * in_angle * in_tracking_ang_speed
             
             # Track number of passes (how many times the visibility state changes from non-visible to visible)
@@ -278,6 +278,6 @@ savefig(h1, "DebrisAvgVisTimeDist.pdf")
 h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
 savefig(h2, "DebrisAvgVisTimeDist100.pdf")
 h3 = histogram(filter(vis_time -> vis_time < 2000, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=80, legend=false)
-savefig(h3, "DebrisAvgVisTimeDist.pdf")
+savefig(h3, "DebrisMaxVisTimeDist.pdf")
 h4 = histogram(filter(vis_time -> vis_time < 100, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
-savefig(h4, "DebrisAvgVisTimeDist100.pdf")
+savefig(h4, "DebrisMaxVisTimeDist100.pdf")
