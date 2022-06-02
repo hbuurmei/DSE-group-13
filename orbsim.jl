@@ -25,7 +25,7 @@ const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 0#72 * 100 * 60
+const t0 = 0 #72 * 100 * 60
 const dt = 6
 const cooldown_time = 18 # seconds, should be an integer multiple of dt
 const distance_sc = 30e3
@@ -262,20 +262,20 @@ function run_sim(;plotResults=true)
                     energy_per_pulse = 5000 # J
 
                     curr_true_anom = debris_kepler[i, 7] * 180 / pi
-                    curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e) / 1e3
-                    prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e) / 1e3
-                    prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e) / 1e3
+                    curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
+                    prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                    prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
                     thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
-                    new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e) / 1e3
-                    new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e) / 1e3
+                    new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                    new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
 
                     # Update drifts
                     @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
                     @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
 
-                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt, digits=2), "[km]")
-                    # println("Old perigree alt: ", round(prev_perigee_alt, digits=2), "[km], New perigee alt: ", round(new_perigee_alt, digits=2), "[km]")
-                    # println("Old apogree alt: ", round(prev_apogee_alt, digits=2), "[km], New apogee alt: ", round(new_apogee_alt, digits=2), "[km]")
+                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
+                    # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
+                    # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
                     debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
                     debris_counter += debris_removed[i,1]
                     increased_a_counter += (debris_semimajor_original[i] > a_collision)
