@@ -22,12 +22,12 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000  # number of fragments, change this number for simulation speed
+const debris_n = 100000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60
 const dt = 6
-const cooldown_time = 3600 # seconds, should be an integer multiple of dt
+const cooldown_time = 400 # seconds, should be an integer multiple of dt
 const distance_sc = 30e3
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV use at a time in gaussian perturbation equations
