@@ -25,12 +25,12 @@ const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 0 #72 * 100 * 60
+const t0 = 72 * 100 * 60
 const dt = 6
-const cooldown_time = 180 # seconds, should be an integer multiple of dt
+const cooldown_time = 3600 # seconds, should be an integer multiple of dt
 const distance_sc = 30e3
 const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use in gaussian perturbation equations
+const max_dv = 1 # Maximum dV use at a time in gaussian perturbation equations
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
@@ -283,6 +283,7 @@ function run_sim(;plotResults=true)
                     debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
                     debris_counter += debris_removed[i,1]
                     increased_a_counter += (debris_semimajor_original[i] > a_collision)
+                    t_last_pulse = t
                     break # After laser was used, skip processing the other objects in this time step
                 end
             end
@@ -312,7 +313,6 @@ function run_sim(;plotResults=true)
                 non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
                 non_occluded_hit = non_occluded .&& debris_removed[:,2]
                 
-
                 # Occluded debris, not hit by laser
                 plt3d = plot(debris_cartesian[.!occluded_hit, 1], debris_cartesian[.!occluded_hit, 2], debris_cartesian[.!occluded_hit, 3],
                     seriestype=:scatter,
@@ -357,10 +357,10 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
-println("The time required for 50% is equal to ", round(time_required, digits=3), "days.")
+println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), " days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
 savefig(p, "DebrisRemovalTime.pdf")
