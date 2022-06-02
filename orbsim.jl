@@ -27,7 +27,7 @@ const debris_n = 1000  # number of fragments, change this number for simulation 
 const a_collision = R_e + h_collision
 const t0 = 0 #72 * 100 * 60
 const dt = 6
-const cooldown_time = 18 # seconds, should be an integer multiple of dt
+const cooldown_time = 180 # seconds, should be an integer multiple of dt
 const distance_sc = 30e3
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV use in gaussian perturbation equations
@@ -249,12 +249,13 @@ function run_sim(;plotResults=true)
             if abs_distance < 250e3
                 # Update spacecraft velocity
                 @inbounds debris_cartesian_vel[i,:] = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
+                
 
                 # Check angle between debris tranjectory and spacecraft relative to debris
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
                 @inbounds vel_rel_pos_angle = acos(sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)))
-                incidence_condition = vel_rel_pos_angle > 20 * pi/180
-                @inbounds angvel_condition = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
+                incidence_condition = vel_rel_pos_angle < 20 * pi/180
+                @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
                 if incidence_condition && angvel_condition
                     # Inside sphere and cone
                     # println("Inside cone")
@@ -358,6 +359,7 @@ end
 
 @time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
+time_required = last(times)
 println("The time required for 50% is equal to ", round(time_required, digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
