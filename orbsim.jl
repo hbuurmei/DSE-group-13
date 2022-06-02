@@ -25,9 +25,9 @@ const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 0#72 * 100 * 60
+const t0 = 0 #72 * 100 * 60
 const dt = 6
-const cooldown_time = 18 # seconds, should be an integer multiple of dt
+const cooldown_time = 180 # seconds, should be an integer multiple of dt
 const distance_sc = 30e3
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV use in gaussian perturbation equations
@@ -246,13 +246,17 @@ function run_sim(;plotResults=true)
 
             @inbounds rel_pos = position_sc - debris_cartesian[i,:] # Vector from debris to spacecraft
             @inbounds abs_distance = norm(rel_pos)
-            if 100e3 < abs_distance < 500e3
+            if abs_distance < 250e3
                 # Update spacecraft velocity
                 @inbounds debris_cartesian_vel[i,:] = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
+                
 
                 # Check angle between debris tranjectory and spacecraft relative to debris
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
-                if sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)) > sqrt(3) / 2
+                @inbounds vel_rel_pos_angle = acos(sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)))
+                incidence_condition = vel_rel_pos_angle < 20 * pi/180
+                @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
+                if incidence_condition && angvel_condition
                     # Inside sphere and cone
                     # println("Inside cone")
 
@@ -262,20 +266,20 @@ function run_sim(;plotResults=true)
                     energy_per_pulse = 5000 # J
 
                     curr_true_anom = debris_kepler[i, 7] * 180 / pi
-                    curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e) / 1e3
-                    prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e) / 1e3
-                    prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e) / 1e3
+                    curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
+                    prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                    prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
                     thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
-                    new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e) / 1e3
-                    new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e) / 1e3
+                    new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                    new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
 
                     # Update drifts
                     @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
                     @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
 
-                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt, digits=2), "[km]")
-                    # println("Old perigree alt: ", round(prev_perigee_alt, digits=2), "[km], New perigee alt: ", round(new_perigee_alt, digits=2), "[km]")
-                    # println("Old apogree alt: ", round(prev_apogee_alt, digits=2), "[km], New apogee alt: ", round(new_apogee_alt, digits=2), "[km]")
+                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
+                    # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
+                    # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
                     debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
                     debris_counter += debris_removed[i,1]
                     increased_a_counter += (debris_semimajor_original[i] > a_collision)
@@ -355,6 +359,7 @@ end
 
 @time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
+time_required = last(times)
 println("The time required for 50% is equal to ", round(time_required, digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
