@@ -28,14 +28,14 @@ const a_collision = R_e + h_collision
 const t0 = 0#72 * 100 * 60
 const dt = 6
 const cooldown_time = 18 # seconds, should be an integer multiple of dt
-const distance_sc = 40e3
+const distance_sc = 30e3
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV use in gaussian perturbation equations
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
-const M_0_sc = -0.045 * pi
+const M_0_sc = 0
 
 
 
@@ -49,8 +49,6 @@ df = filter(row -> 0 .< row.e .< 1, df)
 df = filter(row -> (row.a * (1 - row.e) .> (R_e + 200e3)) && (row.a * (1 + row.e) .> (R_e + 200e3)), df) # Filter out all that already have a low enough perigee
 debris_kepler = Matrix(select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom", "ID"])) # ID is used as an additional column to store true anomaly
 debris_dims = Matrix(select(df, ["M"]))
-# debris_kepler = debris_kepler[32:33,:]
-# debris_dims = debris_dims[32:33,:]
 
 # Cut data set down to set number of fragments
 tot_debris_n = min(debris_n, length(debris_kepler[:,1]))
@@ -144,7 +142,7 @@ end
         remaining_dv -= max_dv
     end
 
-    println("ΔV imparted: ", (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1))
+    #println("ΔV imparted: ", (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1))
 end
 
 @inline function J_2_RAAN(a, e, i)
@@ -256,7 +254,7 @@ function run_sim(;plotResults=true)
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
                 if sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)) > sqrt(3) / 2
                     # Inside sphere and cone
-                    println("Inside cone")
+                    # println("Inside cone")
 
                     @inbounds debris_removed[i,2] = true
 
@@ -275,9 +273,9 @@ function run_sim(;plotResults=true)
                     @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
                     @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
 
-                    println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt, digits=2), "[km]")
-                    println("Old perigree alt: ", round(prev_perigee_alt, digits=2), "[km], New perigee alt: ", round(new_perigee_alt, digits=2), "[km]")
-                    println("Old apogree alt: ", round(prev_apogee_alt, digits=2), "[km], New apogee alt: ", round(new_apogee_alt, digits=2), "[km]")
+                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt, digits=2), "[km]")
+                    # println("Old perigree alt: ", round(prev_perigee_alt, digits=2), "[km], New perigee alt: ", round(new_perigee_alt, digits=2), "[km]")
+                    # println("Old apogree alt: ", round(prev_apogee_alt, digits=2), "[km], New apogee alt: ", round(new_apogee_alt, digits=2), "[km]")
                     debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
                     debris_counter += debris_removed[i,1]
                     increased_a_counter += (debris_semimajor_original[i] > a_collision)
