@@ -259,7 +259,7 @@ function run_sim(;plotResults=true)
                 @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
                 rotation_vector = cross(position_sc, -vel_sc) / norm(cross(position_sc, -vel_sc))
                 pointing_vector = -vel_sc.*cos(laser_pointing_angle) + cross(rotation_vector, -vel_sc).*sin(laser_pointing_angle) + rotation_vector.*(dot(rotation_vector, -vel_sc)*(1-cos(laser_pointing_angle)))
-                FoV_condition = 0 < dot(pointing_vector, -rel_pos)/(norm(pointing_vector) * norm(-rel_pos)) < cos(FoV/2)
+                FoV_condition = cos(FoV/2) < dot(pointing_vector, -rel_pos)/(norm(pointing_vector) * norm(-rel_pos)) < 1
                 if incidence_condition && angvel_condition && FoV_condition
                     # Inside sphere and cone
                     # println("Inside cone")
