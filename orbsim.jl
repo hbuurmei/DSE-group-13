@@ -246,13 +246,16 @@ function run_sim(;plotResults=true)
 
             @inbounds rel_pos = position_sc - debris_cartesian[i,:] # Vector from debris to spacecraft
             @inbounds abs_distance = norm(rel_pos)
-            if 100e3 < abs_distance < 500e3
+            if abs_distance < 250e3
                 # Update spacecraft velocity
                 @inbounds debris_cartesian_vel[i,:] = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
 
                 # Check angle between debris tranjectory and spacecraft relative to debris
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
-                if sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)) > sqrt(3) / 2
+                @inbounds vel_rel_pos_angle = acos(sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)))
+                incidence_condition = vel_rel_pos_angle > 20 * pi/180
+                @inbounds angvel_condition = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
+                if incidence_condition && angvel_condition
                     # Inside sphere and cone
                     # println("Inside cone")
 
