@@ -22,10 +22,10 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000 # number of fragments, change this number for simulation speed
+const debris_n = 100000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 0 # 5 * 24 * 60 * 60 # 5 days after collision
+const t0 = 5 * 24 * 60 * 60 # 5 days after collision
 const t_end = t0 + 183 * 24 * 60 * 60 # Run for 100 days
 const dt = 6
 const distance_sc = 30e3
@@ -103,6 +103,7 @@ function run_sim(;plotResults=true)
     position_sc = zeros(3)
     debris_vis = zeros(tot_debris_n, 4) # Col1: Number of total passes, Col2: Tot iterations visible, Col3: Max iterations visible in one go, Col4: Amount of visible iterations subsequently
     debris_vis_prev = zeros(Bool, tot_debris_n) # Col1: Visible in previous iteration
+    angvel_tracking = zeros(tot_debris_n)
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
     collision_tracker1 = zeros(tot_debris_n, 2)
@@ -186,7 +187,8 @@ function run_sim(;plotResults=true)
             vel_rel_pos_angle = acos(rel_pos_vel_pos_dot / (vel_norm * abs_distance))
             in_angle = (vel_rel_pos_angle > 20 * pi / 180)
 
-            in_tracking_ang_speed = (vel_norm / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
+            angvel = vel_norm / abs_distance * sin(vel_rel_pos_angle)
+            in_tracking_ang_speed = angvel < 2 * pi / 180
             vis_condition = in_range * in_angle * in_tracking_ang_speed
             
             # Track number of passes (how many times the visibility state changes from non-visible to visible)
@@ -202,6 +204,9 @@ function run_sim(;plotResults=true)
             @inbounds debris_vis[i,3] = (debris_vis[i,4] > debris_vis[i,3]) ? debris_vis[i,4] : debris_vis[i,3]
 
             @inbounds debris_vis_prev[i] = vis_condition
+
+            # Track max angular velocities while meeting visibility conditions
+            @inbounds angvel_tracking[i] = (angvel > angvel_tracking[i]) * in_range * in_angle ? angvel : angvel_tracking[i]
 
             in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 1000) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
             @inbounds collision_tracker1[i] += (collision_tracker2[i] ? false : true) * in_collision_range
@@ -261,10 +266,10 @@ function run_sim(;plotResults=true)
         end
     end
     collision_counter = sum(collision_tracker1)
-    return (debris_vis, collision_counter)
+    return (debris_vis, collision_counter, angvel_tracking)
 end
 
-@time (debris_vis_stats, potential_collisions) = run_sim(plotResults=false)
+@time (debris_vis_stats, potential_collisions, angvel_stats) = run_sim(plotResults=false)
 
 println("Number of potential (<100km) collisions per year: ", potential_collisions)
 
@@ -273,11 +278,15 @@ max_vis_times = debris_vis_stats[:,3] .* dt
 println("Average time visible: ", mean(filter(!isnan, avg_vis_times)), "s")
 println("% of particles with average visibility time below 50 s: ", count(p -> (p .< 50), avg_vis_times) / tot_debris_n * 100)
 println("% of particles with max visibility time below 50 s: ", count(p -> (p .< 50), max_vis_times) / tot_debris_n * 100)
-h1 = histogram(filter(vis_time -> vis_time < 2000, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=80, legend=false)
+h1 = histogram(filter(vis_time -> vis_time < 2000, avg_vis_times), xlabel="Average visibility time per pass [s]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h1, "DebrisAvgVisTimeDist.pdf")
-h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+h2 = histogram(filter(vis_time -> vis_time < 100, avg_vis_times), xlabel="Average visibility time per pass [s]", ylabel="Amount of debris objects", bins=40, legend=false)
 savefig(h2, "DebrisAvgVisTimeDist100.pdf")
-h3 = histogram(filter(vis_time -> vis_time < 2000, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=80, legend=false)
+h3 = histogram(filter(vis_time -> vis_time < 2000, max_vis_times), xlabel="Max. visibility time per pass [s]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h3, "DebrisMaxVisTimeDist.pdf")
-h4 = histogram(filter(vis_time -> vis_time < 100, max_vis_times), xlabel="Max. visibility time per pass", ylabel="Amount of debris objects", bins=40, legend=false)
+h4 = histogram(filter(vis_time -> vis_time < 100, max_vis_times), xlabel="Max. visibility time per pass [s]", ylabel="Amount of debris objects", bins=40, legend=false)
 savefig(h4, "DebrisMaxVisTimeDist100.pdf")
+h5 = histogram(cumsum(angvel_stats)*180/pi, xlabel="Max. angular velocity (cumulative) [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
+savefig(h5, "DebrisMaxAngvelDist.pdf")
+h5 = histogram(cumsum(filter(angvel -> angvel < 2, angvel_stats)*180/pi), xlabel="Max. angular velocity (cumulative) [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
+savefig(h5, "DebrisMaxAngvelDist2.pdf")
