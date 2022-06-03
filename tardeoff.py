@@ -13,22 +13,29 @@ import numpy as np
 # Limit_val is only nesscarry for "fixed" where it defines the manual rangee, and "SD" where it defines x
 # EXAMPLE: avi = tc.param(name="Availability", weight=1/3, Limitype="fixed", Limit_val=[1, 5])
 
-risk = tc.param(name="Risk", weight=0.35, var=0.01, Limitype="minmax", direc="LB")
-speed = tc.param(name="Debris removal speed", weight=0.324, var=0.01, Limitype="minmax", direc="HB")
-power = tc.param(name="Power", weight=0.02, var=0.00002, Limitype="minmax", direc="LB")
-complex = tc.param(name="Complexity", weight=0.0837, var=0.000016, Limitype="minmax", direc="LB")
-volume = tc.param(name="Volume", weight=0.0439, var=0.000041, Limitype="minmax", direc="LB")
-wet_mass = tc.param(name="Wet mass", weight=0.0975, var=0.000087, Limitype="minmax", direc="LB")
-dry_mass = tc.param(name="Dry mass", weight=0.0810, var=0.000068, Limitype="minmax", direc="LB")
+risk = tc.param(name="Risk", weight=0.35*0, var=0.1, Limitype="minmax", direc="LB")
+speed = tc.param(name="Debris removal speed", weight=0.324, var=0.00008*100, Limitype="minmax", direc="HB")
+power = tc.param(name="Power [W]", weight=0.02, var=0.00002*100, Limitype="minmax", direc="LB")
+complex = tc.param(name="Complexity", weight=0.0837, var=0.000016*100, Limitype="minmax", direc="LB")
+volume = tc.param(name="Volume [m^3]", weight=0.0439, var=0.000041*100, Limitype="minmax", direc="LB")
+wet_mass = tc.param(name="Wet mass [kg]", weight=0.0975, var=0.000087*100, Limitype="minmax", direc="LB")
+dry_mass = tc.param(name="Dry mass [kg]", weight=0.0810, var=0.000068*100, Limitype="minmax", direc="LB")
 param_list = [complex, risk, speed, power, dry_mass, wet_mass, volume]
 
 # Define the designs to be traded off source list being the values assigned
 # EXAMPLE: gyro = tc.design(name="Gyroscope", sourcelist=[5, 3, 5])
 
-scoring_matrix = np.array([[108.6, 45.34,	3, 49950, 3684.55, 3774.55, 96.6],
-                  [108.6, 75.56, 5, 99900, 7369.1, 7579.1, 193.2],
-                  [74.3,  65.52, 1, 10890, 868.56, 1475.5, 8.25],
-                  [62.2, 80.86, 1, 8750, 4873, 12338.3, 13.55]])
+# 350km
+# scoring_matrix = np.array([[122, 38,	3, 49950, 3684.55, 3774.55, 31.55],
+#                   [122, 67, 5, 99900, 7369.1, 7579.1, 63.1],
+#                   [74,  47, 1, 10890, 868.56, 1475.5, 8.25],
+#                   [61, 55, 1, 8750, 4873, 12338.3, 13.55]])
+
+# 1000km
+scoring_matrix = np.array([[122, 38,	3, 49950, 3684.55, 4024.55, 32.1],
+                  [122, 67, 5, 99900, 7369.1, 8049.1, 64.2],
+                  [74,  47, 1, 10890, 868.56, 1475.5, 8.25],
+                  [61, 55, 1, 8750, 14576.4, 34829.8, 27.48]])
 
 # for i in range(0, 7):
     # column = scoring_matrix[:, i]
@@ -41,10 +48,11 @@ foam = tc.design(name="Foam", sourcelist=scoring_matrix[2])
 thruster = tc.design(name="Thruster", sourcelist=scoring_matrix[3])
 design_list = [laser, laser_constellation, foam, thruster]
 
+# EF5350, FB8C00, FFEB3B, 8BC34A
 
 # colors for Latex table generation
-colors = [tc.color("EF5350", "red"), tc.color("FB8C00", "orange"), tc.color("FFEB3B", "yellow"),
-          tc.color("8BC34A", "green")]
+colors = [tc.color("FFC0CB", "red"), tc.color("FFA07A", "orange"), tc.color("FFE4B5", "yellow"),
+          tc.color("90EE90", "green")]
 
 # EXAMPLE
 # tradeoff_att = tc.tradeoff(design_list=[gyro, sun, star, maf], param_list=[avi, acc, sam])
