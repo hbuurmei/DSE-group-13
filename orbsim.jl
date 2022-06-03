@@ -22,21 +22,25 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 100000  # number of fragments, change this number for simulation speed
+const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-const t0 = 72 * 100 * 60
-const dt = 6
-const cooldown_time = 400 # seconds, should be an integer multiple of dt
-const distance_sc = 30e3
+const t0 = 72 * 100 * 60  # 5 days
+const dt = 1
+const cooldown_time = 0 # seconds, should be an integer multiple of dt
+const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use at a time in gaussian perturbation equations
+const max_dv = 1 # Maximum dV use in gaussian perturbation equations
+const FoV = 48 * pi / 180  # [rad]
+const range = 250e3 # [m]
+const incidence_angle = 20 * pi / 180 # [rad]
+const min_vis_time = 50 # [s]
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
 const M_0_sc = 0
-
+const laser_pointing_angle = acos(a_collision / a_sc)  # [rad]
 
 
 
@@ -58,6 +62,8 @@ debris_semimajor_original = debris_kepler[:,1]
 debris_cartesian = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_cartesian_vel = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_removed = zeros(Bool, tot_debris_n, 2)
+debris_vis_times_pass = zeros(tot_debris_n)
+debris_vis_prev = zeros(Bool, tot_debris_n)
 
 @inline function calc_true_anomaly(a, e, M)
     # Initial guess
@@ -73,7 +79,7 @@ debris_removed = zeros(Bool, tot_debris_n, 2)
 end
 
 # TODO Perhaps pass the array into function and just fill directly
-@inline function kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN, position)
+function kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN, position)
     # Convert a position in the Keplerian system to a cartesian system
     p = a * (1 - e * e)
     r = p / (1 + e * cos(true_anomaly)) # radius
@@ -88,7 +94,7 @@ end
     position[3] = Z
 end
 
-@inline function calc_vel(a, e, w, true_anomaly, i, RAAN, position)
+function calc_vel(a, e, w, true_anomaly, i, RAAN, position)
     # Get the velocity in cartesian coordinates
     p = a * (1 - e * e)
     r = p / (1 + e * cos(true_anomaly)) # radius
@@ -101,7 +107,7 @@ end
     return [V_X, V_Y, V_Z]
 end
 
-@inline function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, thrust_energy, i)
+function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, thrust_energy, i)
     # Establish RTO (Radial, Transverse, Out-of-plane) axes (unit vectors)
     @inbounds R = normalize(debris_cartesian[i,:])
     @inbounds O = normalize(cross(R, debris_cartesian_vel[i,:]))
@@ -120,7 +126,7 @@ end
         @inbounds dir_dv_rto[1] = dot(dir_dv, R)
         @inbounds dir_dv_rto[2] = dot(dir_dv, T)
         @inbounds dir_dv_rto[3] = dot(dir_dv, O)
-        #println(dv)
+        # println(dv)
 
         @inbounds sqramu = sqrt(debris_kepler[i, 1] / mu)
         @inbounds sub1e2 = 1 - debris_kepler[i, 2] * debris_kepler[i, 2]
@@ -142,16 +148,16 @@ end
         remaining_dv -= max_dv
     end
 
-    #println("ΔV imparted: ", (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1))
+    # println("ΔV imparted: ", (sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1))
 end
 
-@inline function J_2_RAAN(a, e, i)
+function J_2_RAAN(a, e, i)
     n = sqrt(mu / a^3)
     RAAN_dot = -1.5 * n * R_e * R_e * J_2 * cos(i) / (a * a) / (1 - e * e)^2
     return RAAN_dot
 end
 
-@inline function J_2_w(a, e, i)
+function J_2_w(a, e, i)
     n = sqrt(mu / a^3)
     w_dot = 0.75 * n * R_e * R_e * J_2 * (4 - 5 * (sin(i))^2) / (a * a) / (1 - e * e)^2
     return w_dot
@@ -170,6 +176,8 @@ function run_sim(;plotResults=true)
     position_sc = zeros(3)
     vel_sc = zeros(3)
     camera_axis_dot = zeros(tot_debris_n)
+
+    temp_debris_kepler = debris_kepler[1,:]
 
     sizehint!(ts, 100000);
     sizehint!(percentages, 100000);
@@ -199,10 +207,11 @@ function run_sim(;plotResults=true)
         RAAN_sc += RAAN_drift_sc
         w_sc += w_drift_sc
 
-        # Compute spacecraft position
+        # Compute spacecraft position and velocity
         n_sc = sqrt(mu / a_sc^3)
         true_anomaly_sc = calc_true_anomaly(a_sc, e_sc, n_sc * t + M_0_sc)
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
+        vel_sc = calc_vel(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
 
         # Update space debris position
         @turbo for i = 1:tot_debris_n
@@ -246,46 +255,120 @@ function run_sim(;plotResults=true)
 
             @inbounds rel_pos = position_sc - debris_cartesian[i,:] # Vector from debris to spacecraft
             @inbounds abs_distance = norm(rel_pos)
-            if abs_distance < 250e3
+            if abs_distance < range
                 # Update spacecraft velocity
                 @inbounds debris_cartesian_vel[i,:] = calc_vel(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 5], debris_kepler[i, 7], debris_kepler[i, 3], debris_kepler[i, 4], debris_cartesian[i,:])
                 
-
                 # Check angle between debris tranjectory and spacecraft relative to debris
                 # println(dot(debris_velocity, rel_pos) / (norm(debris_velocity) * norm(rel_pos)))
                 @inbounds vel_rel_pos_angle = acos(sum(debris_cartesian_vel[i,:] .* rel_pos) / (norm(debris_cartesian_vel[i,:]) * norm(rel_pos)))
-                incidence_condition = vel_rel_pos_angle < 20 * pi/180
-                @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
-                if incidence_condition && angvel_condition
+                incidence_condition = vel_rel_pos_angle < incidence_angle
+                # @inbounds angvel_condition = (norm(debris_cartesian_vel[i,:]) / abs_distance * sin(vel_rel_pos_angle)) < 2 * pi / 180
+                rotation_vector = cross(position_sc, -vel_sc) / norm(cross(position_sc, -vel_sc))
+                pointing_vector = -vel_sc .* cos(laser_pointing_angle) + cross(rotation_vector, -vel_sc) .* sin(laser_pointing_angle) + rotation_vector .* (dot(rotation_vector, -vel_sc) * (1 - cos(laser_pointing_angle)))
+                FoV_condition = acos(dot(pointing_vector, -rel_pos) / (norm(pointing_vector) * norm(-rel_pos))) < FoV / 2
+                if incidence_condition && FoV_condition
                     # Inside sphere and cone
                     # println("Inside cone")
+                    
 
-                    @inbounds debris_removed[i,2] = true
+                    if !debris_vis_prev[i]
+                        temp_position_sc = position_sc
+                        temp_vel_sc = vel_sc
+                        temp_w_sc = w_sc
+                        temp_RAAN_sc = RAAN_sc
+                        
+                        @inbounds temp_debris_kepler = debris_kepler[i,:]
+                        @inbounds temp_debris_cartesian = debris_cartesian[i,:]
+                        @inbounds temp_debris_cartesian_vel = debris_cartesian_vel[i,:]
+                        temp_rel_pos = position_sc
+                        predicted_vis_time = 0
 
-                    thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
-                    energy_per_pulse = 5000 # J
+                        temp_indicence_condition = true
+                        temp_FoV_condition = true
+                        temp_range_condition = true
+                        while temp_range_condition && temp_indicence_condition && temp_FoV_condition
+                            predicted_vis_time += dt
 
-                    curr_true_anom = debris_kepler[i, 7] * 180 / pi
-                    curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
-                    prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
-                    prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
-                    thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
-                    new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
-                    new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+                            # Propagate spacecraft object forward once
+                            temp_w_sc += w_drift_sc
+                            temp_RAAN_sc += RAAN_drift_sc
+                            temp_n_sc = sqrt(mu / a_sc^3)
+                            temp_true_anomaly_sc = calc_true_anomaly(a_sc, e_sc, n_sc * t + M_0_sc)
+                            kepler_to_cartesian(a_sc, e_sc, temp_w_sc, temp_true_anomaly_sc, i_sc, temp_RAAN_sc, temp_position_sc)
+                            temp_vel_sc = calc_vel(a_sc, e_sc, temp_w_sc, temp_true_anomaly_sc, i_sc, temp_RAAN_sc, temp_position_sc)
 
-                    # Update drifts
-                    @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
-                    @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
+                            # Propagate debris object forward once
+                            # Update RAAN and w due to J_2 (debris)
+                            @inbounds temp_debris_kepler[4] += RAAN_drift[i]
+                            @inbounds temp_debris_kepler[5] += w_drift[i]
+                            # Update mean anomaly
+                            @inbounds n = sqrt(mu / temp_debris_kepler[1]^3)
+                            @inbounds temp_debris_kepler[6] = mod(temp_debris_kepler[6] + n * dt, 2 * pi)
+                            # Update true anomaly
+                            @inbounds temp_debris_kepler[7] = calc_true_anomaly(temp_debris_kepler[1], temp_debris_kepler[2], temp_debris_kepler[6])
+                            # Update cartesian position
+                            @inbounds kepler_to_cartesian(temp_debris_kepler[1], temp_debris_kepler[2], temp_debris_kepler[5], temp_debris_kepler[7], temp_debris_kepler[3], temp_debris_kepler[4], temp_debris_cartesian)
+                            # Update cartesian velocity
+                            @inbounds temp_debris_cartesian_vel = calc_vel(temp_debris_kepler[1], temp_debris_kepler[2], temp_debris_kepler[5], temp_debris_kepler[7], temp_debris_kepler[3], temp_debris_kepler[4], temp_debris_cartesian)
 
-                    # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
-                    # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
-                    # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
-                    debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
-                    debris_counter += debris_removed[i,1]
-                    increased_a_counter += (debris_semimajor_original[i] > a_collision)
-                    t_last_pulse = t
-                    break # After laser was used, skip processing the other objects in this time step
+                            # Determine new relative position and distance
+                            temp_rel_pos = position_sc - temp_debris_cartesian # Vector from debris to spacecraft
+                            temp_abs_distance = norm(temp_rel_pos)
+
+                            # Determine if range condition for new position is met
+                            temp_range_condition = temp_abs_distance < range
+
+                            # Determine if incidence condition for new position is met
+                            temp_rel_pos = position_sc - temp_debris_cartesian
+                            temp_vel_rel_pos_angle = acos(sum(temp_debris_cartesian_vel .* temp_rel_pos) / (norm(temp_debris_cartesian_vel) * norm(temp_rel_pos)))
+                            temp_incidence_condition = temp_vel_rel_pos_angle < incidence_angle
+
+                            # Determine if FoV condition for new position is met
+                            temp_rotation_vector = cross(temp_position_sc, - temp_vel_sc) / norm(cross(temp_position_sc, - temp_vel_sc))
+                            temp_pointing_vector = - temp_vel_sc .* cos(laser_pointing_angle) + cross(temp_rotation_vector, - temp_vel_sc) .* sin(laser_pointing_angle) + temp_rotation_vector .* (dot(temp_rotation_vector,  - temp_vel_sc) * (1 - cos(laser_pointing_angle)))
+                            temp_FoV_condition = acos(dot(temp_pointing_vector, - temp_rel_pos) / (norm(temp_pointing_vector) * norm(temp_rel_pos))) < FoV / 2
+                        end
+                        debris_vis_times_pass[i] = predicted_vis_time
+                        println("Fragment detected, expected: ", debris_vis_times_pass[i] , " s in view.")
+                    end
+
+                    if debris_vis_times_pass[i] > min_vis_time
+                        @inbounds debris_removed[i,2] = true
+
+                        thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
+                        energy_per_pulse = 5000 / min_vis_time # J
+
+                        curr_true_anom = debris_kepler[i, 7] * 180 / pi
+                        curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
+                        prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                        prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+                        thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
+                        new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                        new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+
+                        # Update drifts
+                        @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
+                        @inbounds w_drift[i] = J_2_w(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
+
+                        # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
+                        # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
+                        # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
+                        debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
+                        debris_counter += debris_removed[i,1]
+                        increased_a_counter += (debris_semimajor_original[i] > a_collision)
+
+                        t_last_pulse = t
+                        debris_vis_prev[i] = true
+                        break # After laser was used, skip processing the other objects in this time step
+                    else
+                        debris_vis_prev[i] = true
+                    end
+                else
+                    debris_vis_prev[i] = false
                 end
+            else
+                debris_vis_prev[i] = false
             end
         end
 
@@ -313,6 +396,7 @@ function run_sim(;plotResults=true)
                 non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
                 non_occluded_hit = non_occluded .&& debris_removed[:,2]
                 
+
                 # Occluded debris, not hit by laser
                 plt3d = plot(debris_cartesian[.!occluded_hit, 1], debris_cartesian[.!occluded_hit, 2], debris_cartesian[.!occluded_hit, 3],
                     seriestype=:scatter,
@@ -353,14 +437,14 @@ function run_sim(;plotResults=true)
             end
         end
     end
-    increased_a_percentage = increased_a_counter/debris_counter*100
+    increased_a_percentage = increased_a_counter / debris_counter * 100
     return (ts, percentages, increased_a_percentage)
 end
 
 @time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
-println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), " days.")
+println("The time required for 50% is equal to ", round(time_required / (24*3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
-savefig(p, "DebrisRemovalTime.pdf")
+savefig(p, "DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV*180/pi)) * "-i" * string(round(incidence_angle * 180/pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
