@@ -13,37 +13,32 @@ using Statistics
 using LinearAlgebra
 using LoopVectorization
 using Plots
-const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 
-
-# Constants
+# Fundamental constants
 const R_e = 6378.137e3  # [m]
 const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
+
+# User defined constants
 const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
-
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
-const dt = 1
-const cooldown_time = 0 # seconds, should be an integer multiple of dt
+const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use in gaussian perturbation equations
-const FoV = 48 * pi / 180  # [rad]
+const max_dv = 1 # Maximum dV used in gaussian perturbation equations
+const FoV = 86.73 * pi / 180  # [rad]
 const range = 250e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
-const min_vis_time = 50 # [s]
+const ablation_time = 50 # [s]
+const scan_time = 20 # [s]
+const min_vis_time = scan_time + ablation_time # [s]
+const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
+const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 
-# Spacecraft variables
-const a_sc = R_e + h_collision + distance_sc
-const e_sc = 0
-const M_0_sc = 0
-const laser_pointing_angle = acos(a_collision / a_sc)  # [rad]
-
-
-
+# Import data
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
 
 # Select data that is necessary and convert to matrix
@@ -64,6 +59,14 @@ debris_cartesian_vel = Matrix{Float64}(undef, tot_debris_n, 3)
 debris_removed = zeros(Bool, tot_debris_n, 2)
 debris_vis_times_pass = zeros(tot_debris_n)
 debris_vis_prev = zeros(Bool, tot_debris_n)
+
+# Spacecraft constants
+const a_sc = R_e + h_collision + distance_sc
+const e_sc = 0
+const laser_pointing_angle = acos(a_collision / a_sc)  # [rad]
+const M_0_sc = 0  # Assume SC won't be exactly in phase with debris
+const i_sc = 74 * pi / 180 # [rad], Kosmos inclination
+
 
 @inline function calc_true_anomaly(a, e, M)
     # Initial guess
@@ -168,9 +171,8 @@ function run_sim(;plotResults=true)
     increased_a_counter = 0
     t = t0
     t_last_pulse = -Inf64
-    i_sc = mean(debris_kepler[:, 3]) # mean(debris_kepler[:, 3])
     w_sc = J_2_w(a_sc, e_sc, i_sc) * t0
-    RAAN_sc = mean(debris_kepler[:, 4]) + J_2_RAAN(a_sc, e_sc, i_sc) * t0
+    # RAAN_sc = mean(debris_kepler[:, 4]) + J_2_RAAN(a_sc, e_sc, i_sc) * t0
     ts = Vector{Float64}(undef, 0)
     percentages = Vector{Float64}(undef, 0)
     position_sc = zeros(3)
@@ -199,6 +201,9 @@ function run_sim(;plotResults=true)
         @inbounds debris_kepler[i, 4] += RAANd * t0
         @inbounds debris_kepler[i, 5] += wd * t0
     end
+
+    # Assume SC can be inserted at similar RAAN angle as space debris
+    RAAN_sc = mean(debris_kepler[:, 4])
 
     while (debris_counter / tot_debris_n < target_fraction)
         push!(ts, t - t0)
@@ -287,7 +292,7 @@ function run_sim(;plotResults=true)
                         temp_indicence_condition = true
                         temp_FoV_condition = true
                         temp_range_condition = true
-                        while temp_range_condition && temp_indicence_condition && temp_FoV_condition
+                        while temp_range_condition && temp_indicence_condition# && temp_FoV_condition
                             predicted_vis_time += dt
 
                             # Propagate spacecraft object forward once
@@ -330,7 +335,7 @@ function run_sim(;plotResults=true)
                             temp_FoV_condition = acos(dot(temp_pointing_vector, - temp_rel_pos) / (norm(temp_pointing_vector) * norm(temp_rel_pos))) < FoV / 2
                         end
                         debris_vis_times_pass[i] = predicted_vis_time
-                        println("Fragment detected, expected: ", debris_vis_times_pass[i] , " s in view.")
+                        println("Fragment detected, expected: ", debris_vis_times_pass[i], " s in view.")
                     end
 
                     if debris_vis_times_pass[i] > min_vis_time
@@ -414,6 +419,7 @@ function run_sim(;plotResults=true)
                 
                 # Spacecraft
                 scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=10, color="green", label="Spacecraft")
+
                 # Earth
                 phi = 0:pi / 50:2 * pi
                 theta = 0:pi / 100:pi
@@ -441,10 +447,11 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
 time_required = last(times)
-println("The time required for 50% is equal to ", round(time_required / (24*3600), digits=3), "days.")
+println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
+println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
-savefig(p, "DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV*180/pi)) * "-i" * string(round(incidence_angle * 180/pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+# p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
+# savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
