@@ -22,19 +22,21 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000  # number of fragments, change this number for simulation speed
+const debris_n = 100000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
-const dt = 1
-const cooldown_time = 0 # seconds, should be an integer multiple of dt
+const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
-const max_dv = 1 # Maximum dV use in gaussian perturbation equations
+const max_dv = 1 # Maximum dV used in gaussian perturbation equations
 const FoV = 48 * pi / 180  # [rad]
 const range = 250e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
-const min_vis_time = 50 # [s]
+const ablation_time = 50 # [s]
+const scan_time = 5 # [s]
+const min_vis_time = scan_time + ablation_time # [s]
+const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
@@ -287,7 +289,7 @@ function run_sim(;plotResults=true)
                         temp_indicence_condition = true
                         temp_FoV_condition = true
                         temp_range_condition = true
-                        while temp_range_condition && temp_indicence_condition && temp_FoV_condition
+                        while temp_range_condition && temp_indicence_condition# && temp_FoV_condition
                             predicted_vis_time += dt
 
                             # Propagate spacecraft object forward once
@@ -330,7 +332,7 @@ function run_sim(;plotResults=true)
                             temp_FoV_condition = acos(dot(temp_pointing_vector, - temp_rel_pos) / (norm(temp_pointing_vector) * norm(temp_rel_pos))) < FoV / 2
                         end
                         debris_vis_times_pass[i] = predicted_vis_time
-                        println("Fragment detected, expected: ", debris_vis_times_pass[i] , " s in view.")
+                        println("Fragment detected, expected: ", debris_vis_times_pass[i], " s in view.")
                     end
 
                     if debris_vis_times_pass[i] > min_vis_time
@@ -444,7 +446,7 @@ end
 @time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
-println("The time required for 50% is equal to ", round(time_required / (24*3600), digits=3), "days.")
+println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
 p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
-savefig(p, "DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV*180/pi)) * "-i" * string(round(incidence_angle * 180/pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
