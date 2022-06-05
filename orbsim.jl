@@ -29,9 +29,9 @@ const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 86.73 * pi / 180  # [rad]
+const FoV = 46.73 * pi / 180  # [rad]
 const range = 250e3 # [m]
-const incidence_angle = 20 * pi / 180 # [rad]
+const incidence_angle = 80 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
 const scan_time = 20 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
@@ -386,6 +386,7 @@ function run_sim(;plotResults=true)
             println(debris_counter)
             println(round(debris_counter / tot_debris_n * 100, digits=2), '%')
 
+            # println(count(debris_removed[:,1] .* debris_removed[:,2]))
             if plotResults
                 # Determine which debris objects are occluded
                 camera_axis = normalize([cos(view_angles[1] * pi / 180), sin(view_angles[1] * pi / 180), sin(view_angles[2] * pi / 180)])
@@ -400,22 +401,21 @@ function run_sim(;plotResults=true)
                 occluded_hit = occluded .&& debris_removed[:,2]
                 non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
                 non_occluded_hit = non_occluded .&& debris_removed[:,2]
-                
 
                 # Occluded debris, not hit by laser
-                plt3d = plot(debris_cartesian[.!occluded_hit, 1], debris_cartesian[.!occluded_hit, 2], debris_cartesian[.!occluded_hit, 3],
+                plt3d = plot(debris_cartesian[occluded, 1], debris_cartesian[occluded, 2], debris_cartesian[occluded, 3],
                     seriestype=:scatter,
                     markersize=4,
                     xlim=(-8000e3, 8000e3), ylim=(-8000e3, 8000e3), zlim=(-8000e3, 8000e3),
                     title="Space Debris Detection",
                     label="Debris fragment",
-                    color=:red,
+                    color=:black,
                     size=(1100, 1000),
                     camera=view_angles
                 )
 
                 # Occluded debris, hit by laser
-                scatter!(debris_cartesian[occluded_hit, 1], debris_cartesian[occluded_hit, 2], debris_cartesian[occluded_hit, 3], markersize=4, color=:red, label=false)
+                scatter!(debris_cartesian[occluded_hit, 1], debris_cartesian[occluded_hit, 2], debris_cartesian[occluded_hit, 3], markersize=5, color=:red, label=false)
                 
                 # Spacecraft
                 scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=10, color="green", label="Spacecraft")
@@ -429,10 +429,10 @@ function run_sim(;plotResults=true)
                 plot!(x, y, z, linetype=:surface, color=:lightblue, colorbar=false, shade=true)
 
                 # Non-occluded debris, not hit by laser
-                scatter!(debris_cartesian[.!non_occluded_hit, 1], debris_cartesian[.!non_occluded_hit, 2], debris_cartesian[.!non_occluded_hit, 3], markersize=4, color=:black, label=false)
+                scatter!(debris_cartesian[non_occluded, 1], debris_cartesian[non_occluded, 2], debris_cartesian[non_occluded, 3], markersize=4, color=:black, label=false)
 
                 # Non-occluded debris, hit by laser
-                scatter!(debris_cartesian[non_occluded_hit, 1], debris_cartesian[non_occluded_hit, 2], debris_cartesian[non_occluded_hit, 3], markersize=4, color=:red, label=false)
+                scatter!(debris_cartesian[non_occluded_hit, 1], debris_cartesian[non_occluded_hit, 2], debris_cartesian[non_occluded_hit, 3], markersize=5, color=:red, label=false)
 
                 # Spacecraft in front of Earth
                 if dot(camera_axis, position_sc) > 0
@@ -450,6 +450,7 @@ end
 @time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
 time_required = last(times)
+
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
