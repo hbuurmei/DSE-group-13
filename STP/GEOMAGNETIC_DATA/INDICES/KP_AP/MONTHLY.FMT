@@ -1,0 +1,57 @@
+The National Geophysical Data Center provides the observations here with no re-
+strictions on their use.  Please contact us at the address below with your com-
+ments and questions about the form and the content of this information product
+or about the measurements themselves.
+
+NATIONAL GEOPHYSICAL DATA CENTER
+325 Broadway     Mail Code E/GC2
+Boulder, Colorado 80303-3328 USA
+
+Telephone: (303) 497-6475   email: info@ngdc.noaa.gov
+FAX:       (303) 497-6513   WWW: www.ngdc.noaa.gov
+
+
+-------------------------------------------------------------------------------
+SELECTED GEOMAGNETIC AND SOLAR ACTIVITY INDICES
+-------------------------------------------------------------------------------
+
+WORLDWIDE INDICES
+The subscript "p" means planetary and designates a global magnetic activity in-
+dex.  The following 13 observatories, which lie between 46 and 63 degrees north
+and south geomagnetic latitude, now contribute to the planetary indices: Ler-
+wick (UK), Eskdalemuir (UK), Hartland (UK), Ottawa (Canada), Fredericksburg
+(USA), Meannook (Canada), Sitka (USA), Eyrewell (New Zealand), Canberra (Aus-
+tralia), Lovo (Sweden), Brorfelde (Denmark), Wingst (Germany), and Niemegk
+(Germany).
+-------------------------------------------------------------------------------
+
+EQUIVALENT AMPLITUDE
+The a-index ranges from 0 to 400 and represents a K-value converted to a linear
+scale in gammas (nanoTeslas)--a scale that measures equivalent disturbance am-
+plitude of a station at which K=9 has a lower limit of 400 gammas.
+
+-------------------------------------------------------------------------------
+FORMAT FOR MONTHLY MEANS OF SELECTED GEOMAGNETIC INDICES
+-------------------------------------------------------------------------------
+COLUMNS   FMT   DESCRIPTION
+-------------------------------------------------------------------------------
+ 1- 4     I4    YEAR
+ 5- 6     I2    MONTH
+ 7-10     I4    Monthly mean Ap PLANETARY EQUIVALENT DAILY AMPLITUDE
+11-12     2X    Blank   
+13-16     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 00-03 UT.
+17-20     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 03-06 UT.
+21-24     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 06-09 UT.
+25-28     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 09-12 UT.
+29-32     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 12-15 UT.
+33-36     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 15-18 UT.
+37-40     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 18-21 UT.
+41-44     I4    Monthly mean ap or PLANETARY EQUIVALENT AMPLITUDE for 21-24 UT.
+45-50     F6.2  Monthly mean Cp or PLANETARY DAILY CHARACTER FIGURE--a 
+                  qualitative estimate of overall level of magnetic activity for 
+                  the day determined from the sum of the eight ap amplitudes. Cp 
+                  ranges, in steps of one-tenth, from 0 (quiet) to 2.5 
+                  (highly disturbed).
+51-53     I3    Monthly mean C9--a conversion of the 0-to-2.5 range of the Cp 
+                  index to one digit between 0 and 9.
+-------------------------------------------------------------------------------

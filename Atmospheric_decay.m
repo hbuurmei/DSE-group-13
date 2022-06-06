@@ -1,6 +1,6 @@
 %% Pre-run Cleaning
 
-clear 
+clear
 clear global x
 clc
 
@@ -8,50 +8,85 @@ clc
 
 mu = 3.986004418*10^14;
 Re = 6371000; % [m]
-h = 380000; % [m]
-J2 = 1082.63*10^-6; %[-] J2 effect parameter
-a = Re + h;
-e = 0;
+J2 = 1082.63*10^-6; %[-] J2 effect parameter#
+
+
+%% Simulation
+
+% Stationkeeping
+global initial_time;
+initial_time = [2014 3 21 11 00 00]; %real time at which the mission starts
+h_p = 380*10^3;
+h_a = 380*10^3;
+a = (2*Re + h_p + h_a) / 2;
+e = (h_a - h_p) / (2*a);
 i = deg2rad(97);
 RAAN = 0;
 true_anomaly = 0;
 w = 0;
 T = 2*pi*sqrt(a^3/mu); % [s] orbital period
-Cd = 2.2; % [-] 
-A = 0.0216; % [m^2] cross-sectional area
-m = 8; % [m] mass
-
-
-%% Initial Conditions
-
-initial_time = [2017 3 21 11 00 00]; %real time at which the mission starts
-%dyear = decyear(initial_time(1), initial_time(2), initial_time(3)); %decimal year at which the mission starts
-
+Cd = 3; % [-] 
+A = 80; % [m^2] cross-sectional area
+m = 3000; % [m] mass
+n_orbits = 3;
+t_span = [0 n_orbits*T]; % 1 orbit simulated, the more orbits, the worse this approximation
 position = kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN);
 velocity = calc_vel(a, e, w, true_anomaly, i, RAAN, position, mu);
-
-sim_days = 30;
-t_span = [0 sim_days*3600*24];
 y0 = [position' velocity'];
-
-
-%% Simulation
-
-opts = odeset('RelTol', 1e-8);
-[t, y] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m), t_span, y0, opts);
+opts = odeset('RelTol', 1e-12);
+[t1, y1] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m, true, false), t_span, y0, opts); % With J2, without drag
+[t2, y2] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m, true, true), t_span, y0, opts); % With J2, with drag
+deltav_stationkeeping = abs(norm(y1(end)) - norm(y2(end)))
+deltav_over_one_year = deltav_stationkeeping * 265 * 24 * 3600 / T
+% Debris decay
+%global initial_time;
+%initial_time = [2019 3 21 11 00 00]; %real time at which the mission starts
+%h_p = 250*10^3;
+%i = deg2rad(97);
+%RAAN = 0;
+%true_anomaly = 0;
+%w = 0;
+%T = 2*pi*sqrt(a^3/mu); % [s] orbital period
+%Cd = 2.2; % [-]
+%A = 0.002020659;%0.000350967; % [m^2] cross-sectional area
+%m = 1.615070207;%0.004338822; % [m] mass
+%sim_days = 365;
+%t_span = [0 sim_days*3600*24];
+%h_a_range = 100:10:200; % [km]
+%opts = odeset('RelTol', 1e-6, 'Events', @events);
+%decay_times = zeros(size(h_a_range));
+%for idx = 1:numel(h_a_range)
+%    h_a = h_a_range(idx) * 10^3;
+%    a = (2*Re + h_p + h_a) / 2;
+%    e = (h_a - h_p) / (2*a);
+%    position = kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN);
+%    velocity = calc_vel(a, e, w, true_anomaly, i, RAAN, position, mu);
+%    y0 = [position' velocity'];
+%    [t, y] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m, true, true), t_span, y0, opts); % Without J2
+%    decay_times(idx) = t(end);
+%end
+    
 
 
 %% Plotting
 
-radii = vecnorm(y(:, 1:3), 2, 2);
-heights = radii - Re;
+%plot(h_a_range, decay_times/24/3600);
+%xlabel('Periapsis Altitude [km]')
+%ylabel('Decay time [days]')
+%grid on
+%[max_time, mmax_idx] = max(decay_times);
+%ylim([0, min(sim_days,max_time) + 10])
+%saveas(gcf,'Peri-vs-Alt.png')
 
-plot(t/24/3600, heights/1000, t/24/3600, 100*ones(length(heights)), 'r');
-xlabel('Time [days]')
-ylabel('Height [km]')
-grid on
-yticks(0:50:h/1000 + 100)
-ylim([0, h/1000 + 100])
+%radii = vecnorm(y(:, 1:3), 2, 2);
+%heights = radii - Re;
+%stride = ceil(min(sim_days, t(end)/24/3600));
+%plot(t(1:stride:end)/24/3600, heights(1:stride:end)/1000, t(1:stride:end)/24/3600, 100*ones(length(heights(1:stride:end))), 'r');
+%xlabel('Time [days]')
+%ylabel('Height [km]')
+%grid on
+%yticks(0:50:h_a/1000 + 100)
+%ylim([0, h_a/1000 + 100])
 
 
 %% Function Definition
@@ -130,14 +165,19 @@ day_of_year = day(d, 'dayofyear');
 UTseconds = (time(4)*60 + time(5))*60 + time(6);
 
 % obtain the location
-[latitude, longitude, altitude] = lla(t, initial_time, position);
+[latitude, longitude, altitude] = lla(t, initial_time, position');
 
 % get solar flux and magnetic index data
 [f107a, f107d] = getf107_func(year, day_of_year, false);
 [magnetic_index] = getAPH_func(year, day_of_year, UTseconds, false);
 
+if (altitude < 0) | (altitude > 1000*10^3)
+    altitude
+end
+clamp_alt = max(min(1000*10^3,altitude),0);
+
 % estimate mass density, disregarding the temperatures
-[~, rhos] = atmosnrlmsise00(altitude, latitude, longitude, year, day_of_year, ...
+[~, rhos] = atmosnrlmsise00(clamp_alt, latitude, longitude, year, day_of_year, ...
                        UTseconds, f107a, f107d, magnetic_index); 
 rho = rhos(6); % get the total mass density
 end
@@ -160,13 +200,26 @@ function [a] = a_drag(Cd, v, A, m, rho)
 a = -Cd/2*rho*norm(v)*A*v/m;
 end
 
-function [dydt] = odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m)
+function [value,isterminal,direction] = events(t,y)
+% Locate the time when y passes through 0.111 in all 
+% directions and stop integration.
+global initial_time;
+position = y(1:3);
+
+[latitude, longitude, altitude] = lla(t, initial_time, position');
+value = (altitude > 0);
+isterminal = 1; % Stop the integration
+direction = -1; % When altitude decreases and crosses 0
+end
+
+
+function [dydt] = odefunc(t, y, initial_time, Cd, A, mu, Re, J2, m, j2_enabled, drag_enabled)
 position = y(1:3);
 v = y(4:6);
 
 % Density
-if mod(floor(t), 60) == 0
-    rho = density_calc(t, initial_time, position');
+if mod(floor(t), 5) == 0
+    rho = density_calc(t, initial_time, position);
     set_global_value(rho);
 end
 
@@ -175,7 +228,7 @@ rho = get_global_value;
 a1 = a_earth(position, mu);
 a2 = a_J2(position, mu, Re, J2);
 a3 = a_drag(Cd, v, A, m, rho);
-a = a1 + a3;
+a = a1 + a2 * j2_enabled + a3 * drag_enabled;
 
 dydt = zeros(6, 1);
 

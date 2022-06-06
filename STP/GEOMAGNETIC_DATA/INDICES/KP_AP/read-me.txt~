@@ -1,0 +1,31 @@
+Dear User,
+
+This dataset is now being updated by the National Geophysical
+Data Center on a monthly basis.  The Gottingen Kp/Ap values are
+usually received one month after after the end of the reporting 
+period.  For example, data for November 1994 was received at the end 
+of December, 1994. These files will be updated periodically with 
+the final sunspot numbers when available.
+
+The KP1994 file was used as an interim measure until the original 
+dataset was updated.
+
+In February 1994 the Institut fuer Geophysik ported the programs for
+calculating and plotting of Kp and derivated values to a different computer
+system. Due to different compilers the calculation program was treated
+differently and the transition tables for seasonal changes were not applied
+properly. The affected times are
+
+                       Feb 14 - Mar 15, 1994
+                       Apr 16 - May 15, 1994
+                       Aug 17 - Sep 15, 1994
+                       Oct 17 - Nov 15, 1994
+                       Feb 14 - Feb 28, 1995.
+
+During these times, some of the published Kp values differ by the value of
+one third from the proper values (3+ instead of 3o, for example). The
+differing Kp values will also affect the ap, Ap and Cp/C9 values. In some
+cases, the ranking of the most quiet and most disturbed days may change.
+
+New Kp/Ap files will now be given version numbers so users can be sure
+they have the latest version, ie 1994.v2.
