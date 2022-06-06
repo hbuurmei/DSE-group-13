@@ -22,20 +22,20 @@ const mu = 3.986004418e14  # [m3/s2]
 
 # User defined constants
 const h_collision = 789e3  # [m]
-const debris_n = 1000  # number of fragments, change this number for simulation speed
+const debris_n = 100000  # number of fragments, change this number for simulation speed
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
 const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 46.73 * pi / 180  # [rad]
+const FoV = 48 * pi / 180  # [rad]
 const range = 250e3 # [m]
-const incidence_angle = 80 * pi / 180 # [rad]
+const incidence_angle = 20 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
-const scan_time = 20 # [s]
+const scan_time = 0 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
-const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
+const cooldown_time = min_vis_time + 150 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 
 # Import data
@@ -338,19 +338,20 @@ function run_sim(;plotResults=true)
                         println("Fragment detected, expected: ", debris_vis_times_pass[i], " s in view.")
                     end
 
-                    if debris_vis_times_pass[i] > min_vis_time
+                    if debris_vis_times_pass[i] >= min_vis_time
                         @inbounds debris_removed[i,2] = true
 
-                        thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
-                        energy_per_pulse = 5000 / min_vis_time # J
+                        @inbounds thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
+                        energy_per_pulse = 5000 # J
 
-                        curr_true_anom = debris_kepler[i, 7] * 180 / pi
-                        curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
-                        prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
-                        prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+                        @inbounds curr_true_anom = debris_kepler[i, 7] * 180 / pi
+                        @inbounds curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
+                        @inbounds prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                        @inbounds prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
                         thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
-                        new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
-                        new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+                        @inbounds new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
+                        @inbounds new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
+                        
 
                         # Update drifts
                         @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
@@ -359,21 +360,23 @@ function run_sim(;plotResults=true)
                         # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
                         # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
                         # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
-                        debris_removed[i,1] = (new_perigee_alt < (R_e + 200e3)) || (new_apogee_alt < (R_e + 200e3)) # Mark object as removed if perigee is now below 200 km
-                        debris_counter += debris_removed[i,1]
-                        increased_a_counter += (debris_semimajor_original[i] > a_collision)
+                        @inbounds debris_removed[i,1] = (new_perigee_alt < 200e3) || (new_apogee_alt < 200e3) # Mark object as removed if perigee is now below 200 km
+                        @inbounds debris_counter += debris_removed[i,1]
+                        @inbounds increased_a_counter += (debris_semimajor_original[i] > a_collision)
+                        println("New Perigee: ", new_perigee_alt, ", New Apogee: ", new_apogee_alt)
+                        println("Debris seen: ", debris_removed[i,2], ", Debris removed: ", debris_removed[i,1])
 
                         t_last_pulse = t
-                        debris_vis_prev[i] = true
+                        @inbounds debris_vis_prev[i] = true
                         break # After laser was used, skip processing the other objects in this time step
                     else
-                        debris_vis_prev[i] = true
+                        @inbounds debris_vis_prev[i] = true
                     end
                 else
-                    debris_vis_prev[i] = false
+                    @inbounds debris_vis_prev[i] = false
                 end
             else
-                debris_vis_prev[i] = false
+                @inbounds debris_vis_prev[i] = false
             end
         end
 
@@ -389,21 +392,21 @@ function run_sim(;plotResults=true)
             # println(count(debris_removed[:,1] .* debris_removed[:,2]))
             if plotResults
                 # Determine which debris objects are occluded
-                camera_axis = normalize([cos(view_angles[1] * pi / 180), sin(view_angles[1] * pi / 180), sin(view_angles[2] * pi / 180)])
+                @inbounds camera_axis = normalize([cos(view_angles[1] * pi / 180), sin(view_angles[1] * pi / 180), sin(view_angles[2] * pi / 180)])
                 for i in 1:tot_debris_n
                     # Compute distance of point from camera axis
                     # Resulting distance is negative if point is on the side of Earth faced away from the camera
-                    camera_axis_dot[i] = dot(camera_axis, debris_cartesian[i,:])
+                    @inbounds camera_axis_dot[i] = dot(camera_axis, debris_cartesian[i,:])
                 end
 
                 # Debris that is occluded by Earth, drawn to make transition to behind Earth better
-                occluded = (camera_axis_dot .< 0) .&& .!debris_removed[:,1]
-                occluded_hit = occluded .&& debris_removed[:,2]
-                non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
-                non_occluded_hit = non_occluded .&& debris_removed[:,2]
+                @inbounds occluded = (camera_axis_dot .< 0) .&& .!debris_removed[:,1]
+                @inbounds occluded_hit = occluded .&& debris_removed[:,2]
+                @inbounds non_occluded = (camera_axis_dot .> 0) .&& .!debris_removed[:,1]
+                @inbounds non_occluded_hit = non_occluded .&& debris_removed[:,2]
 
                 # Occluded debris, not hit by laser
-                plt3d = plot(debris_cartesian[occluded, 1], debris_cartesian[occluded, 2], debris_cartesian[occluded, 3],
+                @inbounds plt3d = plot(debris_cartesian[occluded, 1], debris_cartesian[occluded, 2], debris_cartesian[occluded, 3],
                     seriestype=:scatter,
                     markersize=4,
                     xlim=(-8000e3, 8000e3), ylim=(-8000e3, 8000e3), zlim=(-8000e3, 8000e3),
@@ -415,10 +418,10 @@ function run_sim(;plotResults=true)
                 )
 
                 # Occluded debris, hit by laser
-                scatter!(debris_cartesian[occluded_hit, 1], debris_cartesian[occluded_hit, 2], debris_cartesian[occluded_hit, 3], markersize=5, color=:red, label=false)
+                @inbounds scatter!(debris_cartesian[occluded_hit, 1], debris_cartesian[occluded_hit, 2], debris_cartesian[occluded_hit, 3], markersize=5, color=:red, label=false)
                 
                 # Spacecraft
-                scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=10, color="green", label="Spacecraft")
+                @inbounds scatter!([position_sc[1]], [position_sc[2]], [position_sc[3]], markersize=10, color="green", label="Spacecraft")
 
                 # Earth
                 phi = 0:pi / 50:2 * pi
@@ -447,7 +450,7 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
 
