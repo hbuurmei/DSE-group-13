@@ -448,5 +448,5 @@ end
 time_required = last(times)
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
+p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]")
 savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
