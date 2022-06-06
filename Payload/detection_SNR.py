@@ -54,8 +54,7 @@ ax1.legend()
 # --------------- FOV VERSUS DISTANCE AND SCANNING TIME, FOR A GIVEN MAX POWER ------------------
 # Explicit relation for the distance, as a function of FoV, for the given max power
 distance = ((P_pulse_max*eff_t*A_debris*refl*eff_r*eff_q)/(4*SNR*np.pi*np.pi*I_background*(1-np.cos(fov/2))))**(1/4)
-D_search = 2*distance*np.tan(fov/2)  # [m] searching diameter illuminated by FoV
-A_search = np.pi*(D_search/2)**2  # [m^2] searching area illuminated by FoV
+A_cone = 2*np.pi*(distance**2)*(1-np.cos(fov/2))  # should replace A_search
 
 fig2 = plt.figure()
 ax2 = fig2.add_subplot(1, 1, 1)
@@ -63,9 +62,13 @@ ax2 = fig2.add_subplot(1, 1, 1)
 # Including a scanning pattern to increase the FoV.
 x = 0
 for t_pattern in [1/f_rep, 0.1, 1, 5, 10, 20]:  # [s] time for scanning pattern (first element = stationary FoV)
-    A_pattern = t_pattern*f_rep*A_search  # [m^2] total area illuminated by the pattern
-    D_pattern = 2*np.sqrt(A_pattern/np.pi)  # [m] diameter of scanning area
-    fov_pattern = 2*np.arctan(D_pattern/(2*distance))  # [rad] fov corresponding to the scanning area
+    '''If the total scanning area is larger than the entire sphere at the distance, the argument to be entered in 
+    arccos exceeds the limit. So, only when abs(cos_arg) <= 1, they are entered in arccos. The other values
+    are left as Not-a-Number.'''
+    A_pattern = t_pattern*f_rep*A_cone/2  # divide by 2 since there is about 50% overlap between each image.
+    cos_arg = 1-A_pattern/(2*np.pi*(distance**2))  # argument to be entered in arccos
+    fov_pattern = np.array([np.nan]*len(distance))  # initiate empty array
+    fov_pattern[np.abs(cos_arg) <= 1] = 2*np.arccos(cos_arg[np.abs(cos_arg) <= 1])  # check for compliance with arccos
 
     if x == 0:  # separate 'stationary' FoV from scanning FoV, to create a more logical label for the legend
         ax2.semilogx(distance/1000, fov_pattern*180/np.pi, linestyle=linestyles[x], label=f'Stationary (no scanning)')

@@ -21,7 +21,6 @@ const h_collision = 789e3  # [m]
 const debris_n = 1000  # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
-# const t0 = 0.0
 const t0 = 72 * 100 * 60.
 const dt = 6
 const distance_sc = 30e3  # Orbital altitude of spacecraft above collision altitude
@@ -238,8 +237,8 @@ function run_sim(;plotResults=true)
                 x = [R_e*cos(t)*sin(p) for t in theta, p in phi]
                 y = [R_e*sin(t)*sin(p) for t in theta, p in phi]
                 z = [R_e*cos(p) for t in theta, p in phi]
-                #display(surface!(x, y, z, color = "blue", colorbar = false, alpha=0.1))
-                display(plt3d)
+                display(surface!(x, y, z, color = "blue", colorbar = false, alpha=0.1))
+                # display(plt3d)
             end
         end
     end
