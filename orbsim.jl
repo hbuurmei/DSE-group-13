@@ -29,11 +29,11 @@ const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 96.56 * pi / 180  # [rad]
+const FoV = 54.63 * pi / 180  # [rad]
 const range = 250e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
-const scan_time = 30 # [s]
+const scan_time = 10 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
 const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
@@ -129,7 +129,6 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds dir_dv_rto[1] = dot(dir_dv, R)
         @inbounds dir_dv_rto[2] = dot(dir_dv, T)
         @inbounds dir_dv_rto[3] = dot(dir_dv, O)
-        # println(dv)
 
         @inbounds sqramu = sqrt(debris_kepler[i, 1] / mu)
         @inbounds sub1e2 = 1 - debris_kepler[i, 2] * debris_kepler[i, 2]
@@ -138,7 +137,7 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds cosf = cos(debris_kepler[i, 7])
         @inbounds ecosf1 = debris_kepler[i, 2] * cosf + 1
         @inbounds n = sqrt(mu / debris_kepler[i, 1]^3)
-    
+
         # Gaussian perturbation formulae
         @inbounds debris_kepler[i, 1] += sqramu * 2 * debris_kepler[i, 1] / sqr1e2 * (debris_kepler[i, 2] * sinf * dir_dv_rto[1] + ecosf1 * dir_dv_rto[2])
         @inbounds debris_kepler[i, 2] += sqramu * sqr1e2 * (sinf * dir_dv_rto[1] + (debris_kepler[i, 2] + 2 * cosf + debris_kepler[i, 2] * cosf * cosf) / ecosf1 * dir_dv_rto[2])
@@ -147,7 +146,7 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds debris_kepler[i, 4] += dRAAN
         @inbounds debris_kepler[i, 5] += sqramu * sqr1e2 / debris_kepler[i, 2] * (- cosf * dir_dv_rto[1] + (ecosf1 + 1) / ecosf1 * sinf * dir_dv_rto[2]) - cos(debris_kepler[i, 3]) * dRAAN
         @inbounds debris_kepler[i, 6] += n + sub1e2 / (n * debris_kepler[i, 1] * debris_kepler[i, 2]) * ((cosf - 2 * debris_kepler[i, 2] / ecosf1) * dir_dv_rto[1] - (ecosf1 + 1) / ecosf1 * sinf * dir_dv_rto[2])
-    
+
         remaining_dv -= max_dv
     end
 
@@ -451,12 +450,12 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
 
 time_required = last(times)
 
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-# p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
-# savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
+savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf", label=false)
