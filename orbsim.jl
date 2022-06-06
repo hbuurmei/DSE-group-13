@@ -22,20 +22,20 @@ const mu = 3.986004418e14  # [m3/s2]
 
 # User defined constants
 const h_collision = 789e3  # [m]
-const debris_n = 100000  # number of fragments, change this number for simulation speed
+const debris_n = 1000  # number of fragments, change this number for simulation speed
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
 const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 48 * pi / 180  # [rad]
+const FoV = 46.73 * pi / 180  # [rad]
 const range = 250e3 # [m]
-const incidence_angle = 20 * pi / 180 # [rad]
+const incidence_angle = 80 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
-const scan_time = 0 # [s]
+const scan_time = 20 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
-const cooldown_time = min_vis_time + 150 # seconds, should be an integer multiple of dt
+const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 
 # Import data
@@ -351,7 +351,7 @@ function run_sim(;plotResults=true)
                         thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
                         @inbounds new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
                         @inbounds new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
-                        
+
 
                         # Update drifts
                         @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
@@ -386,7 +386,8 @@ function run_sim(;plotResults=true)
         if mod(round(t), 50) == 0
             println("--------------------------------------------")
             println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
-            println(debris_counter)
+            println("Hit: ", count(debris_removed[:,2]))
+            println("Removed: ", debris_counter)
             println(round(debris_counter / tot_debris_n * 100, digits=2), '%')
 
             # println(count(debris_removed[:,1] .* debris_removed[:,2]))
@@ -450,12 +451,12 @@ function run_sim(;plotResults=true)
     return (ts, percentages, increased_a_percentage)
 end
 
-@time (times, perc, perc_increased_a) = run_sim(plotResults=false)
+@time (times, perc, perc_increased_a) = run_sim(plotResults=true)
 
 time_required = last(times)
 
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]")
-savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+# p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]")
+# savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
