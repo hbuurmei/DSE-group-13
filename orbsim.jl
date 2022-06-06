@@ -29,11 +29,11 @@ const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 54.63 * pi / 180  # [rad]
+const FoV = 45.57 * pi / 180  # [rad]
 const range = 250e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
-const scan_time = 10 # [s]
+const scan_time = 7 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
 const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
@@ -457,5 +457,5 @@ time_required = last(times)
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* (100 * 0.61), xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
+p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
 savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
