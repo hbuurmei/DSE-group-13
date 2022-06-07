@@ -1,0 +1,118 @@
+From kivory2@osf1.mpae.gwdg.de Fri Feb 21 01:24 MST 1997
+From: Kevin Ivory <kivory2@osf1.mpae.gwdg.de>
+Organization: Max-Planck-Institut fuer Aeronomie
+
+Subject: Re: Kp station list
+
+A list of current observatories:
+
+The information below I extracted from the WWW pages that
+have now moved to Niemegk with the whole Kp calculation and
+distribution. The start page is:
+
+   http://www.gfz-potsdam.de/pb2/pg3/niemegk/kp_index/
+
+
+Ks/Kp Observatories
+
+The main purpose of the standardized index Ks is to provide
+a basis for the global geomagnetic index Kp which is
+the average of a number of "Kp stations", originally 11.
+The Ks data for the two stations Brorfelde and Lovö, as
+well as for Eyrewell and Canberra, are combined so that
+their average enters into the final calculation, the divisor
+thus remaining 11.
+
+Current observatory          Replacement for
+
+MEA Meanook
+SIT Sitka
+LER Lerwick
+ESK Eskdalemuir
+LOV Lovö
+BFE Brorfelde                RSV Rude Skov
+WNG Wingst
+WIT Witteveen                NGK Niemegk
+HAD Hartland                 ABN Abinger
+OTT Ottawa                   AGN Agincourt
+FRD Fredericksburg           CLH Cheltenham
+EYR Eyrewell                 AML Amberley
+CNB Canberra                 TOO Toolangi
+
+
+
+ "The observatory of Witteveen has been closed by March 31, 1988. 
+From April 1, 1988, on the K indices from Niemegk, Germany are 
+used instead."
+
+From the Kp calculating program, I extracted that Agincourt was
+used until March 1969. April 1969 and later Ottawa was used.
+Before 1972 only 12 stations were included for Kp calculating.
+If I read the code correct, Toolangi must have been the station
+added last (and later replaced by Canberra).
+
+
+
+
+-- 
+  Kevin Ivory                           Tel: +49 5556 979 434
+  Max-Planck-Institut fuer Aeronomie    Fax: +49 5556 979 240
+  Postfach 20                           mailto:kivory2@gwdg.de
+D-37189 Katlenburg-Lindau, GERMANY      http://www.gwdg.de/~kivory2/
+
+
+
+
+
+From bp@dmi.min.dk Thu Jul 17 02:09 MDT 1997
+Received: from gate.dmi.min.dk (gate.dmi.min.dk [130.226.64.30])
+	by ngdc.noaa.gov (8.8.5/8.8.5) with SMTP id CAA26695
+	for <hcoffey@ngdc.noaa.gov>; Thu, 17 Jul 1997 02:09:35 -0600 (MDT)
+Received: from dmi.min.dk (butler.dmi.min.dk [130.226.64.29]) by gate.dmi.min.dk (8.6.4/8.6.4) with SMTP id IAA18283; Thu, 17 Jul 1997 08:11:25 GMT
+Received: from dmi66117.dmi.dk by  dmi.min.dk (5.x/SMI-SVR4)
+	id AA04005; Thu, 17 Jul 1997 08:09:28 GMT
+Message-Id: <MAPI.Id.0016.00702020202020204545423530303041@MAPI.to.RFC822>
+Priority: Normal
+To: hcoffey@ngdc.noaa.gov, Hans-Joachim Linthe <linthe@gfz-potsdam.de>
+Cc: "'Ole Rasmussen'" <or@dmi.min.dk>
+Mime-Version: 1.0
+From: =?ISO-8859-1?Q?B=F8rge?= Pedersen <bp@dmi.min.dk>
+Subject: History of Kp stations
+Date: Thu, 17 Jul 97 10:15:06 -0000 (UTC)
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=US-ASCII; X-MAPIextension=".TXT"
+Content-Length: 542
+Status: R
+
+Dear Helen Coffey.
+
+>From Dr. Linthe, GFZ, I have received your request for when Brorfelde 
+replaced Rude Sov in the Kp derivation, and the answer is:
+
+Rude Skov was used until 15 March 1984, and consequently Brorfelde 
+has been used from 16 March 1984 an onwards.
+
+Best regards,
+
+Boerge Pedersen
+
+
+
+
+********************************************
+Boerge Pedersen
+Solar-Terrestrial Physics Division
+Danish Meteorological Institute
+Lyngbyvej 100
+DK-2100 Copenhagen
+Denmark
+
+FAX:    +45 39 15 74 60
+Phone:  +45 39 15 74 76
+E-mail: bp@dmi.dk
+
+
+
+
+
+

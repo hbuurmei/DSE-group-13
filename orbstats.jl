@@ -22,18 +22,20 @@ const g_0 = 9.80665  # [m/s2]
 const J_2 = 0.00108263  # [-]
 const mu = 3.986004418e14  # [m3/s2]
 const h_collision = 789e3  # [m]
-const debris_n = 1000 # number of fragments, change this number for simulation speed
+const debris_n = 100000 # number of fragments, change this number for simulation speed
 
 const a_collision = R_e + h_collision
 const t0 = 5 * 24 * 60 * 60 # 5 days after collision
 const t_end = t0 + 183 * 24 * 60 * 60 # Run for 100 days
 const dt = 6
 const distance_sc = 30e3
+const FoV = 48 * pi / 180  # [rad]
 
 # Spacecraft variables
 const a_sc = R_e + h_collision + distance_sc
 const e_sc = 0
 const M_0_sc = 0
+const laser_pointing_angle = acos(a_collision / a_sc)  # [rad]
 
 
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
@@ -81,6 +83,19 @@ end
     position[1] = X
     position[2] = Y
     position[3] = Z
+end
+
+@inline function calc_vel(a, e, w, true_anomaly, i, RAAN, position)
+    # Get the velocity in cartesian coordinates
+    p = a * (1 - e * e)
+    r = p / (1 + e * cos(true_anomaly)) # radius
+    h = sqrt(mu * p)
+
+    V_X = (position[1] * h * e / (r * p)) * sin(true_anomaly) - (h / r) * (cos(RAAN) * sin(w + true_anomaly) + sin(RAAN) * cos(w + true_anomaly) * cos(i))
+    V_Y = (position[2] * h * e / (r * p)) * sin(true_anomaly) - (h / r) * (sin(RAAN) * sin(w + true_anomaly) - cos(RAAN) * cos(w + true_anomaly) * cos(i))
+    V_Z = (position[3] * h * e / (r * p)) * sin(true_anomaly) + (h / r) * (cos(w + true_anomaly) * sin(i))
+
+    return [V_X, V_Y, V_Z]
 end
 
 @inline function J_2_RAAN(a, e, i)
@@ -137,6 +152,8 @@ function run_sim(;plotResults=true)
         n_sc = sqrt(mu / a_sc^3)
         true_anomaly_sc = calc_true_anomaly(a_sc, e_sc, n_sc * t + M_0_sc)
         kepler_to_cartesian(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
+        vel_sc = calc_vel(a_sc, e_sc, w_sc, true_anomaly_sc, i_sc, RAAN_sc, position_sc)
+
 
         # Update space debris position
         @tturbo for i = 1:tot_debris_n
@@ -168,7 +185,7 @@ function run_sim(;plotResults=true)
             @inbounds debris_cartesian[i, 2] = r * (sin(debris_kepler[i, 4]) * cos(debris_kepler[i, 5] + debris_kepler[i, 7]) + cos(debris_kepler[i, 4]) * sin(debris_kepler[i, 5] + debris_kepler[i, 7]) * cos(debris_kepler[i, 3]))
             @inbounds debris_cartesian[i, 3] = r * (sin(debris_kepler[i, 3]) * sin(debris_kepler[i, 5] + debris_kepler[i, 7]))
         
-            @inbounds rel_pos_x = position_sc[1] - debris_cartesian[i,1]
+            @inbounds rel_pos_x = position_sc[2] - debris_cartesian[i,2]
             @inbounds rel_pos_y = position_sc[2] - debris_cartesian[i,2]
             @inbounds rel_pos_z = position_sc[3] - debris_cartesian[i,3]
             @inbounds abs_distance = sqrt(rel_pos_x^2 + rel_pos_y^2 + rel_pos_z^2)
@@ -190,7 +207,27 @@ function run_sim(;plotResults=true)
             
             angvel = vel_norm / abs_distance * sin(vel_rel_pos_angle)
             in_tracking_ang_speed = angvel < 2 * pi / 180
-            vis_condition = in_range * in_angle * in_tracking_ang_speed
+
+            # Calculate angle to FoV center vector and check condition
+            pos_sc_vel_cross_x = - position_sc[2] * vel_sc[3] + position_sc[3] * vel_sc[2]
+            pos_sc_vel_cross_y = - position_sc[3] * vel_sc[1] + position_sc[1] * vel_sc[3]
+            pos_sc_vel_cross_z = - position_sc[1] * vel_sc[2] + position_sc[2] * vel_sc[1]
+            norm_pos_sc_vel_cross = sqrt(pos_sc_vel_cross_x^2 + pos_sc_vel_cross_y^2 + pos_sc_vel_cross_z^2)
+            rotation_vector_x = pos_sc_vel_cross_x / norm_pos_sc_vel_cross
+            rotation_vector_y = pos_sc_vel_cross_y / norm_pos_sc_vel_cross
+            rotation_vector_z = pos_sc_vel_cross_z / norm_pos_sc_vel_cross
+            rot_vel_dot = rotation_vector_x * vel_sc[1] + rotation_vector_y * vel_sc[2] + rotation_vector_z * vel_sc[3]
+            rot_vel_cross_x = - rotation_vector_y * vel_sc[3] + rotation_vector_z * vel_sc[2]
+            rot_vel_cross_y = - rotation_vector_z * vel_sc[1] + rotation_vector_x * vel_sc[3]
+            rot_vel_cross_z = - rotation_vector_x * vel_sc[2] + rotation_vector_y * vel_sc[1]
+            pointing_vector_x = -vel_sc[1] * cos(laser_pointing_angle) + rot_vel_cross_x * sin(laser_pointing_angle) + rotation_vector_x * rot_vel_dot * (1 - cos(laser_pointing_angle))
+            pointing_vector_y = -vel_sc[2] * cos(laser_pointing_angle) + rot_vel_cross_y * sin(laser_pointing_angle) + rotation_vector_y * rot_vel_dot * (1 - cos(laser_pointing_angle))
+            pointing_vector_z = -vel_sc[3] * cos(laser_pointing_angle) + rot_vel_cross_z * sin(laser_pointing_angle) + rotation_vector_z * rot_vel_dot * (1 - cos(laser_pointing_angle))
+            pointing_vector_norm = sqrt(pointing_vector_x^2 + pointing_vector_y^2 + pointing_vector_z^2)
+            pointing_rel_pos_dot = - pointing_vector_x * rel_pos_x - pointing_vector_y * rel_pos_y - pointing_vector_z * rel_pos_z
+            FoV_condition = acos(pointing_rel_pos_dot / (pointing_vector_norm * abs_distance)) < FoV / 2
+
+            vis_condition = in_range * in_angle * FoV_condition# * in_tracking_ang_speed
             
             # Track number of passes (how many times the visibility state changes from non-visible to visible)
             @inbounds debris_vis[i,1] += (debris_vis_prev[i] ? false : true) * vis_condition
@@ -210,14 +247,14 @@ function run_sim(;plotResults=true)
             @inbounds angvel_tracking[i] = (angvel > angvel_tracking[i]) * in_range * in_angle ? angvel : angvel_tracking[i]
             
             # Track max angular acceleration while meeting visibility conditions
-            @inbounds debris_pos_norm = sqrt(debris_cartesian[i,1]^2+debris_cartesian[i,2]^2+debris_cartesian[i,2]^2)
+            @inbounds debris_pos_norm = sqrt(debris_cartesian[i,1]^2 + debris_cartesian[i,2]^2 + debris_cartesian[i,2]^2)
             grav_acc_debris_x = -debris_cartesian[i,1] * mu / debris_pos_norm^3
             grav_acc_debris_y = -debris_cartesian[i,2] * mu / debris_pos_norm^3
             grav_acc_debris_z = -debris_cartesian[i,3] * mu / debris_pos_norm^3
             grav_acc_sc_x = -position_sc[1] * mu / norm(position_sc)^3
             grav_acc_sc_y = -position_sc[2] * mu / norm(position_sc)^3
             grav_acc_sc_z = -position_sc[3] * mu / norm(position_sc)^3
-            angacc = sqrt((grav_acc_debris_x + grav_acc_sc_x)^2 + (grav_acc_debris_y + grav_acc_sc_y)^2 + (grav_acc_debris_z + grav_acc_sc_z)^2 ) / abs_distance * sin(vel_rel_pos_angle) # Angle here is an approximation!
+            angacc = sqrt((grav_acc_debris_x + grav_acc_sc_x)^2 + (grav_acc_debris_y + grav_acc_sc_y)^2 + (grav_acc_debris_z + grav_acc_sc_z)^2) / abs_distance * sin(vel_rel_pos_angle) # Angle here is an approximation!
             angacc_tracking[i] = (angacc > angacc_tracking[i]) * in_range * in_angle ? angacc : angacc_tracking[i]
 
             in_collision_range = ((abs_distance * cos(vel_rel_pos_angle)) < 1000) * ((abs_distance * sin(vel_rel_pos_angle)) < (vel_norm * dt))
@@ -300,12 +337,12 @@ savefig(h3, "DebrisMaxVisTimeDist.pdf")
 h4 = histogram(filter(vis_time -> vis_time < 100, max_vis_times), xlabel="Max. visibility time per pass [s]", ylabel="Amount of debris objects", bins=40, legend=false)
 savefig(h4, "DebrisMaxVisTimeDist100.pdf")
 
-h5 = histogram(angvel_stats .* 180/pi, xlabel="Max. angular velocity [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
+h5 = histogram(angvel_stats .* 180 / pi, xlabel="Max. angular velocity [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h5, "DebrisMaxAngVelDist.pdf")
-h6 = histogram(filter(angvel -> angvel < 50, angvel_stats .* 180/pi), xlabel="Max. angular velocity [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
+h6 = histogram(filter(angvel -> angvel < 50, angvel_stats .* 180 / pi), xlabel="Max. angular velocity [deg/s]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h6, "DebrisMaxAngVelDist2.pdf")
 
-h7 = histogram(angacc_stats .* 180/pi, xlabel="Max. angular acceleration [deg/s^2]", ylabel="Amount of debris objects", bins=80, legend=false)
+h7 = histogram(filter(angacc -> angacc < 30, angacc_stats .* 180 / pi), xlabel="Max. angular acceleration [deg/s^2]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h7, "DebrisMaxAngAccDist.pdf")
-h8 = histogram(filter(angacc -> angacc < 2, angacc_stats .* 180/pi), xlabel="Max. angular acceleration [deg/s^2]", ylabel="Amount of debris objects", bins=80, legend=false)
+h8 = histogram(filter(angacc -> angacc < 2, angacc_stats .* 180 / pi), xlabel="Max. angular acceleration [deg/s^2]", ylabel="Amount of debris objects", bins=80, legend=false)
 savefig(h8, "DebrisMaxAngAccDist2.pdf")
