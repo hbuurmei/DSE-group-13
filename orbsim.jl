@@ -22,7 +22,7 @@ const mu = 3.986004418e14  # [m3/s2]
 
 # User defined constants
 const h_collision = 789e3  # [m]
-const debris_n = 100000  # number of fragments, change this number for simulation speed
+const debris_n = 1000  # number of fragments, change this number for simulation speed
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
 const dt = 5
@@ -134,7 +134,6 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds dir_dv_rto[1] = dot(dir_dv, R)
         @inbounds dir_dv_rto[2] = dot(dir_dv, T)
         @inbounds dir_dv_rto[3] = dot(dir_dv, O)
-        # println(dv)
 
         @inbounds sqramu = sqrt(debris_kepler[i, 1] / mu)
         @inbounds sub1e2 = 1 - debris_kepler[i, 2] * debris_kepler[i, 2]
@@ -143,7 +142,7 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds cosf = cos(debris_kepler[i, 7])
         @inbounds ecosf1 = debris_kepler[i, 2] * cosf + 1
         @inbounds n = sqrt(mu / debris_kepler[i, 1]^3)
-    
+
         # Gaussian perturbation formulae
         @inbounds debris_kepler[i, 1] += sqramu * 2 * debris_kepler[i, 1] / sqr1e2 * (debris_kepler[i, 2] * sinf * dir_dv_rto[1] + ecosf1 * dir_dv_rto[2])
         @inbounds debris_kepler[i, 2] += sqramu * sqr1e2 * (sinf * dir_dv_rto[1] + (debris_kepler[i, 2] + 2 * cosf + debris_kepler[i, 2] * cosf * cosf) / ecosf1 * dir_dv_rto[2])
@@ -152,7 +151,7 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
         @inbounds debris_kepler[i, 4] += dRAAN
         @inbounds debris_kepler[i, 5] += sqramu * sqr1e2 / debris_kepler[i, 2] * (- cosf * dir_dv_rto[1] + (ecosf1 + 1) / ecosf1 * sinf * dir_dv_rto[2]) - cos(debris_kepler[i, 3]) * dRAAN
         @inbounds debris_kepler[i, 6] += n + sub1e2 / (n * debris_kepler[i, 1] * debris_kepler[i, 2]) * ((cosf - 2 * debris_kepler[i, 2] / ecosf1) * dir_dv_rto[1] - (ecosf1 + 1) / ecosf1 * sinf * dir_dv_rto[2])
-    
+
         remaining_dv -= max_dv
     end
 
@@ -358,7 +357,7 @@ function run_sim(;plotResults=true)
                         thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, deltav, i)
                         @inbounds new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
                         @inbounds new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
-                        
+
 
                         # Update drifts
                         @inbounds RAAN_drift[i] = J_2_RAAN(debris_kepler[i, 1], debris_kepler[i, 2], debris_kepler[i, 3]) * dt
@@ -392,7 +391,8 @@ function run_sim(;plotResults=true)
         if mod(round(t), 50) == 0
             println("--------------------------------------------")
             println("t = ", round((t - t0) / (24 * 3600), digits=2), " days")
-            println(debris_counter)
+            println("Hit: ", count(debris_removed[:,2]))
+            println("Removed: ", debris_counter)
             println(round(debris_counter / tot_debris_n * 100, digits=2), '%')
 
             # println(count(debris_removed[:,1] .* debris_removed[:,2]))
@@ -464,5 +464,5 @@ println("Dv computed directly from fluence, cm, f and A/M")
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]")
+p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
 savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
