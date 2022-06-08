@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
 from mpl_toolkits import mplot3d
-plt.ion()  # not plot without plt.show()
+plt.ioff()  # not plot without plt.show()
 
 main = False
 MRN_Bool = True
@@ -22,7 +22,7 @@ J2_val = 0.00108263  # [-]
 R_Earth = 6371  # km
 Earth_day_duration = 24 * 60 * 60  # s
 mu_Earth = 398600.4418  # km^3/s^2
-T_end = 2*90*60  #1*24*60*60  # s mission duration
+T_end = 1*24*60*60  # s mission duration
 Earth_Rotation_Rate = 2 * np.pi / Earth_day_duration
 elevDeg = 1
 f_trans = 3 * 1e9  # S Band
@@ -331,7 +331,7 @@ class relay:
 
     def results(self): # ATTENTION 0 !!!!!!!!
         print(f"{self.name} availability: {100* self.commTime/(T_end)} %")
-        return self.inCommLatRec, self.inCommLongRec, self.noCommLatRec, self.noCommLongRec, self.commDuration
+        return self.inCommLatRec, self.inCommLongRec, self.noCommLatRec, self.noCommLongRec, self.commDuration, 100* self.commTime/(T_end)
 
 
 # here the rover is the GS
@@ -345,14 +345,17 @@ SG =  GS(Name="SG",  planetRadius=R_Earth, latitudeDeg=78.229772, longitudeDeg=1
 
 ground = [KIR, RED, KRU, SMA, AGO, MAL, SG]
 #180*satID/len(satNums)
-satNums = np.arange(1, 2, 1)
-satsA = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(90), argumentOfPericenterRad=0,
+satNums = np.arange(1, 30, 1)
+satsA = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(180*satID/len(satNums)), argumentOfPericenterRad=0,
                ascendingNodeRad=0, timeOfPericenterPassage=0, sc_name="SCA_" + str(satID), mu=mu_Earth) for satID in satNums]
 
 satsB = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(180*satID/len(satNums)), argumentOfPericenterRad=0,
-               ascendingNodeRad=90, timeOfPericenterPassage=0, sc_name="SC_" + str(satID), mu=mu_Earth) for satID in satNums]
+               ascendingNodeRad=60, timeOfPericenterPassage=0, sc_name="SCB_" + str(satID), mu=mu_Earth) for satID in satNums]
 
-satList = satsA #+ satsB
+satsC = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(180*satID/len(satNums)), argumentOfPericenterRad=0,
+               ascendingNodeRad=120, timeOfPericenterPassage=0, sc_name="SCC_" + str(satID), mu=mu_Earth) for satID in satNums]
+
+satList = satsA + satsB + satsC
 for sc in satList:
     sc.plotOrbit()
 
@@ -386,7 +389,7 @@ fig, ax = plt.subplots()
 
 for sat in satList:
     ax.imshow(bg, extent=ext)
-    inlatrec, inlongrec, nolatrec, nolongrec, commDuration = sat.results()
+    inlatrec, inlongrec, nolatrec, nolongrec, commDuration, perAvailability = sat.results()
     commDuration = np.array(commDuration)
     ax.scatter(nolongrec, nolatrec, color='blue', s=1)
     ax.scatter(inlongrec, inlatrec, color='red', s=1)
@@ -401,10 +404,16 @@ for sat in satList:
             pass
         else:
             window = (commIntervals[i] - commIntervals[index0])*dt/60  # minutes
-            print(window, "min")
+            # print(window, "min")
             index0 = i + 1
         i += 1
-GS_lat = [67.85713, 50.00046, 5.251606, 36.99725]
-GS_long = [20.96432, 5.145344, -52.80466, -25.13572]
+GS_lat = [67.85713, 50.00046, 5.251606, 36.99725, -33.133333, -2.995556, 78.229772]
+GS_long = [20.96432, 5.145344, -52.80466, -25.13572, -70.666667, 40.194511, 15.407786]
+
+AGO = GS(Name="AGO", planetRadius=R_Earth, latitudeDeg=-33.133333, longitudeDeg=-70.666667) # Check if this one is necessary
+MAL = GS(Name="MAL", planetRadius=R_Earth, latitudeDeg=-2.995556, longitudeDeg=40.194511) # Check if this one is necessary
+SG = GS(Name="SG",  planetRadius=R_Earth, latitudeDeg=78.229772, longitudeDeg=15.407786) # Check if this one is necessary
 ax.scatter(GS_long, GS_lat, color='green', s=10)
+ax.set_xlabel(r'Longitude $\lambda$ [deg]')
+ax.set_ylabel(r'Latitude $\phi$ [deg]')
 plt.show()
