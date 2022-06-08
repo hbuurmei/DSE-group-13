@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
-import sympy as sp
 from mpl_toolkits import mplot3d
-plt.ioff()  # not plot without plt.show()
+plt.ion()  # not plot without plt.show()
 
 main = False
 MRN_Bool = True
@@ -19,10 +18,11 @@ colours = ["red", "blue", "green", "black", "pink"]
 c = 299792458  # m/s
 k_bolt = 1.380649 * 1e-23  # J/K
 AU = 149597871  # km
+J2_val = 0.00108263  # [-]
 R_Earth = 6371  # km
 Earth_day_duration = 24 * 60 * 60  # s
 mu_Earth = 398600.4418  # km^3/s^2
-T_end = 2 * 90 * 60#1*24*60*60  # s mission duration
+T_end = 2*90*60  #1*24*60*60  # s mission duration
 Earth_Rotation_Rate = 2 * np.pi / Earth_day_duration
 elevDeg = 1
 f_trans = 3 * 1e9  # S Band
@@ -236,6 +236,15 @@ class relay:
             self.commDuration.append(0)
         return np.rad2deg(lat_t), np.rad2deg(long_t)
 
+    def J2(self, dt, mu=mu_Earth, R_e=R_Earth, J_2= J2_val):
+        n = np.sqrt(mu / self.a ** 3)
+        RAAN_dot = -1.5 * n * R_e ** 2 * J_2 * np.cos(np.deg2rad(self.i)) / self.a ** 2 / (1 - self.e ** 2) ** 2
+        w_dot = 0.75 * n * R_e ** 2 * J_2 * (4 - 5 * (np.sin(np.deg2rad(self.i))) ** 2) / self.a ** 2 / (1 - self.e ** 2) ** 2
+        self.Omega = self.Omega + RAAN_dot*dt
+        self.w = self.w + w_dot*dt
+        return False
+
+
     def inCommunicationCone(self, relayPosition, roverPosition, elevationAngleDeg):  # THIS ONE WILL STILL NEED SOME DEBUGGING
         '''
         Determines whether the satellite can be in communication with the rover or not.
@@ -321,7 +330,7 @@ class relay:
         return True
 
     def results(self): # ATTENTION 0 !!!!!!!!
-        print(f"{100* self.commTime/(T_end)} %")
+        print(f"{self.name} availability: {100* self.commTime/(T_end)} %")
         return self.inCommLatRec, self.inCommLongRec, self.noCommLatRec, self.noCommLongRec, self.commDuration
 
 
@@ -330,17 +339,20 @@ KIR = GS(Name="KIR", planetRadius=R_Earth, latitudeDeg=67.85713, longitudeDeg=20
 RED = GS(Name="RED", planetRadius=R_Earth, latitudeDeg=50.00046, longitudeDeg=5.145344)
 KRU = GS(Name="KRU", planetRadius=R_Earth, latitudeDeg=5.251606, longitudeDeg=-52.80466)
 SMA = GS(Name="SMA", planetRadius=R_Earth, latitudeDeg=36.99725, longitudeDeg=-25.13572) # Check if this one is necessary
+AGO = GS(Name="AGO", planetRadius=R_Earth, latitudeDeg=-33.133333, longitudeDeg=-70.666667) # Check if this one is necessary
+MAL = GS(Name="MAL", planetRadius=R_Earth, latitudeDeg=-2.995556, longitudeDeg=40.194511) # Check if this one is necessary
+SG =  GS(Name="SG",  planetRadius=R_Earth, latitudeDeg=78.229772, longitudeDeg=15.407786) # Check if this one is necessary
 
-ground = [KIR, RED, KRU, SMA]
+ground = [KIR, RED, KRU, SMA, AGO, MAL, SG]
 #180*satID/len(satNums)
 satNums = np.arange(1, 2, 1)
-satsA = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(60), argumentOfPericenterRad=0,
+satsA = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(90), argumentOfPericenterRad=0,
                ascendingNodeRad=0, timeOfPericenterPassage=0, sc_name="SCA_" + str(satID), mu=mu_Earth) for satID in satNums]
 
-#satsB = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(180*satID/len(satNums)), argumentOfPericenterRad=0,
-#               ascendingNodeRad=90, timeOfPericenterPassage=0, sc_name="SC_"+ str(satID), mu=mu_Earth) for satID in satNums]
+satsB = [relay(semiMajorAxis=350+6371, eccentricity=0, inclinationRad=np.deg2rad(180*satID/len(satNums)), argumentOfPericenterRad=0,
+               ascendingNodeRad=90, timeOfPericenterPassage=0, sc_name="SC_" + str(satID), mu=mu_Earth) for satID in satNums]
 
-satList = satsA # + satsB
+satList = satsA #+ satsB
 for sc in satList:
     sc.plotOrbit()
 
@@ -361,7 +373,7 @@ while t < T_end:
                 j = True
                 sat.performance(contactTime=dt)
         sat.groundTrackData(xSAT, ySAT, zSAT, t, Earth_Rotation_Rate, j)
-
+        sat.J2(dt)
     for gs in ground:
         gs.updatePosition(Earth_Rotation_Rate, dt)
     t += dt
@@ -371,6 +383,7 @@ bg = plt.imread("land_ocean_ice_350.jpg")
 color_map = matplotlib.colors.ListedColormap(colors)
 ext = [-180, 180, -90, 90]
 fig, ax = plt.subplots()
+
 for sat in satList:
     ax.imshow(bg, extent=ext)
     inlatrec, inlongrec, nolatrec, nolongrec, commDuration = sat.results()
@@ -379,12 +392,19 @@ for sat in satList:
     ax.scatter(inlongrec, inlatrec, color='red', s=1)
 
     # Contact window duration
-    print(commDuration)
     indices = (np.arange(1, len(commDuration)+1, 1))
     commIntervals = indices[commDuration == 1]
-    print(commIntervals)
-    ## HOW TO FIND AVERAGE CONTACT WINDOW TIME ???????
-
+    commIntervals = np.append(commIntervals, np.array([10**4]))
+    i, index0 = 0, 0
+    while i <= len(commIntervals)-2:
+        if commIntervals[i]+1 == commIntervals[i+1]:
+            pass
+        else:
+            window = (commIntervals[i] - commIntervals[index0])*dt/60  # minutes
+            print(window, "min")
+            index0 = i + 1
+        i += 1
 GS_lat = [67.85713, 50.00046, 5.251606, 36.99725]
 GS_long = [20.96432, 5.145344, -52.80466, -25.13572]
 ax.scatter(GS_long, GS_lat, color='green', s=10)
+plt.show()
