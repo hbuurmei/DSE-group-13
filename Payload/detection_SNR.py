@@ -18,6 +18,7 @@ P_avg = E_pulse*f_rep  # [W] average power
 eff_t = 0.70  # transmitter optics efficiency
 eff_r = 0.70  # receiver optics efficiency
 eff_q = 0.40  # quantum efficiency of detector
+overlap = 0.3  # percentage of overlap between the images
 
 # Creating a fov array, and calculating the background noise
 step = 1e-4  # step size for fov [deg]
@@ -65,7 +66,7 @@ for t_pattern in [1/f_rep, 0.1, 1, 5, 10, 20]:  # [s] time for scanning pattern 
     '''If the total scanning area is larger than the entire sphere at the distance, the argument to be entered in 
     arccos exceeds the limit. So, only when abs(cos_arg) <= 1, they are entered in arccos. The other values
     are left as Not-a-Number.'''
-    A_pattern = t_pattern*f_rep*A_cone/2  # divide by 2 since there is about 50% overlap between each image.
+    A_pattern = t_pattern*f_rep*A_cone*(1-overlap)  # more overlap between images reduces possible FoV
     cos_arg = 1-A_pattern/(2*np.pi*(distance**2))  # argument to be entered in arccos
     fov_pattern = np.array([np.nan]*len(distance))  # initiate empty array
     fov_pattern[np.abs(cos_arg) <= 1] = 2*np.arccos(cos_arg[np.abs(cos_arg) <= 1])  # check for compliance with arccos

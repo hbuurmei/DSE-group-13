@@ -29,14 +29,18 @@ const dt = 5
 const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
-const FoV = 45.57 * pi / 180  # [rad]
+const FoV = 38.44 * pi / 180  # [rad]
 const range = 250e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
 const ablation_time = 50 # [s]
-const scan_time = 7 # [s]
+const scan_time = 5 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
 const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
+const fluence = 8500 # [J/m^2]
+const Cm = 9.107e-5 # [-]
+const freq = 59.697 # [Hz]
+
 
 # Import data
 df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
@@ -47,7 +51,7 @@ df = filter(row -> row.d_eq .< 0.1, df)
 df = filter(row -> 0 .< row.e .< 1, df)
 df = filter(row -> (row.a * (1 - row.e) .> (R_e + 200e3)) && (row.a * (1 + row.e) .> (R_e + 200e3)), df) # Filter out all that already have a low enough perigee
 debris_kepler = Matrix(select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom", "ID"])) # ID is used as an additional column to store true anomaly
-debris_dims = Matrix(select(df, ["M"]))
+debris_dims = Matrix(select(df, ["M", "A_M"]))
 
 # Cut data set down to set number of fragments
 tot_debris_n = min(debris_n, length(debris_kepler[:,1]))
@@ -110,7 +114,7 @@ function calc_vel(a, e, w, true_anomaly, i, RAAN, position)
     return [V_X, V_Y, V_Z]
 end
 
-function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, thrust_energy, i)
+function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, tot_dv, i)
     # Establish RTO (Radial, Transverse, Out-of-plane) axes (unit vectors)
     @inbounds R = normalize(debris_cartesian[i,:])
     @inbounds O = normalize(cross(R, debris_cartesian_vel[i,:]))
@@ -118,13 +122,14 @@ function thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_ve
     
     # Compute product of a and thrust_dt
     # Based on kinetic energy and v2 = a * dt + v1
-    @inbounds v1 = norm(debris_cartesian_vel[i,:])
-    @inbounds tot_dv = sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1
+    #@inbounds v1 = norm(debris_cartesian_vel[i,:])
+    #@inbounds tot_dv = sqrt(v1 * v1 + 2 * thrust_energy / debris_dims[i,1]) - v1
 
+    println("Tot dv: ", tot_dv)
     remaining_dv = tot_dv
     while remaining_dv > 0
         dv = (remaining_dv / max_dv) < 1 ? mod(remaining_dv, max_dv) : max_dv
-        dir_dv = normalize(thrust_dir) .* dv
+        dir_dv = thrust_dir .* dv
         dir_dv_rto = zeros(3)
         @inbounds dir_dv_rto[1] = dot(dir_dv, R)
         @inbounds dir_dv_rto[2] = dot(dir_dv, T)
@@ -341,13 +346,15 @@ function run_sim(;plotResults=true)
                         @inbounds debris_removed[i,2] = true
 
                         @inbounds thrust_dir = - normalize(debris_cartesian_vel[i,:]) # Thrust opposite of debris velocity
-                        energy_per_pulse = 5000 # J
+                        #energy_per_pulse = 5000 # J
+                        deltav = fluence * Cm * freq * debris_dims[i,2] * ablation_time
 
                         @inbounds curr_true_anom = debris_kepler[i, 7] * 180 / pi
                         @inbounds curr_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2] * debris_kepler[i, 2]) / (1 + debris_kepler[i, 2] * cos(debris_kepler[i, 7])) - R_e)
                         @inbounds prev_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
                         @inbounds prev_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
-                        thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
+                        #thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, energy_per_pulse, i)
+                        thrust_alter_orbit(debris_kepler, debris_cartesian, debris_cartesian_vel, debris_dims, thrust_dir, deltav, i)
                         @inbounds new_perigee_alt = (debris_kepler[i, 1] * (1 - debris_kepler[i, 2]) - R_e)
                         @inbounds new_apogee_alt = (debris_kepler[i, 1] * (1 + debris_kepler[i, 2]) - R_e)
 
@@ -362,7 +369,6 @@ function run_sim(;plotResults=true)
                         @inbounds debris_removed[i,1] = (new_perigee_alt < 200e3) || (new_apogee_alt < 200e3) # Mark object as removed if perigee is now below 200 km
                         @inbounds debris_counter += debris_removed[i,1]
                         @inbounds increased_a_counter += (debris_semimajor_original[i] > a_collision)
-                        println("New Perigee: ", new_perigee_alt, ", New Apogee: ", new_apogee_alt)
                         println("Debris seen: ", debris_removed[i,2], ", Debris removed: ", debris_removed[i,1])
 
                         t_last_pulse = t
@@ -454,6 +460,7 @@ end
 
 time_required = last(times)
 
+println("Dv computed directly from fluence, cm, f and A/M")
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
