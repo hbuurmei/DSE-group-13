@@ -19,6 +19,7 @@ global initial_time;
 initial_time = [2014 3 21 11 00 00]; %real time at which the mission starts
 h_p = 380*10^3;
 h_a = 380*10^3;
+
 a = (2*Re + h_p + h_a) / 2;
 e = (h_a - h_p) / (2*a);
 i = deg2rad(97);
@@ -39,9 +40,10 @@ opts = odeset('RelTol', 1e-12);
 deltav_stationkeeping = abs(norm(y1(end)) - norm(y2(end)))
 deltav_over_one_year = deltav_stationkeeping * 265 * 24 * 3600 / T
 %}
+
 % Debris decay
 global initial_time;
-initial_time = [2017 3 21 11 00 00]; %real time at which the mission starts
+initial_time = [2006 8 21 11 00 00]; %real time at which the mission starts
 h_a = 1000*10^3;
 i = deg2rad(97);
 RAAN = 0;
@@ -49,13 +51,17 @@ true_anomaly = 0;
 w = 0;
 Cd = 2.2; % [-]
 A_m = 0.07946; % area-to-mass ratio of the object
-sim_days = 365;
+sim_days = 730;
 t_span = [0 sim_days*3600*24];
-h_p_range = 400; % [km]
+h_p_range = 350; % [km]
 opts = odeset('RelTol', 1e-6, 'Events', @events);
 decay_times = zeros(size(h_p_range));
+global min_altitudes;
+global t_min_altitudes;
+t_min_altitudes = 0;
 for idx = 1:numel(h_p_range)
     h_p = h_p_range(idx) * 10^3;
+    min_altitudes = h_p;
     a = (2*Re + h_p + h_a) / 2;
     e = (h_a - h_p) / (2*a);
     position = kepler_to_cartesian(a, e, w, true_anomaly, i, RAAN);
@@ -63,12 +69,15 @@ for idx = 1:numel(h_p_range)
     y0 = [position' velocity'];
     [t, y] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A_m, mu, Re, J2, false, true), t_span, y0, opts); % Without J2
     decay_times(idx) = t(end);
+    T = table(t_min_altitudes', min_altitudes');
+    writetable(T, string(h_p) + ".txt")
 end
     
 
 
 %% Plotting
 
+%{
 figure(1)
 plot(h_p_range, decay_times/24/3600);
 xlabel('Periapsis Altitude [km]')
@@ -77,17 +86,20 @@ grid on
 [max_time, mmax_idx] = max(decay_times);
 %ylim([0, min(sim_days,max_time) + 10])
 %saveas(gcf,'Peri-vs-Alt.png')
+%}
 
-figure(2)
+
+%figure(2)
 radii = vecnorm(y(:, 1:3), 2, 2);
 heights = radii - Re;
 stride = ceil(min(sim_days, t(end)/24/3600));
-plot(t(1:stride:end)/24/3600, heights(1:stride:end)/1000, t(1:stride:end)/24/3600, 100*ones(length(heights(1:stride:end))), 'r');
+plot(t(1:stride:end)/24/3600, heights(1:stride:end)/1000);
 xlabel('Time [days]')
 ylabel('Height [km]')
 grid on
 yticks(0:50:h_a/1000 + 100)
 ylim([0, h_a/1000 + 100])
+savefig(string(h_p_range) + ".txt")
 
 
 %% Function Definition
@@ -156,9 +168,10 @@ longitude = lla(2);
 altitude = lla(3);
 end
 
-function [rho] = density_calc(t, initial_time, position)
+function [rho] = density_calc(t, latitude, longitude, altitude)
 %computes the local density using the atmosnrlmsise00 model
 %obtain real time in the form requested by atmosnrlmsise00
+global initial_time;
 time = real_time(t, initial_time);
 year = time(1);
 d = datetime(time(1), time(2), time(3));
@@ -166,7 +179,7 @@ day_of_year = day(d, 'dayofyear');
 UTseconds = (time(4)*60 + time(5))*60 + time(6);
 
 % obtain the location
-[latitude, longitude, altitude] = lla(t, initial_time, position');
+%[latitude, longitude, altitude] = lla(t, initial_time, position');
 
 % get solar flux and magnetic index data
 [f107a, f107d] = getf107_func(year, day_of_year, false);
@@ -218,9 +231,19 @@ function [dydt] = odefunc(t, y, initial_time, Cd, A_m, mu, Re, J2, j2_enabled, d
 position = y(1:3);
 v = y(4:6);
 
+% obtain the location
+[latitude, longitude, altitude] = lla(t, initial_time, position');
+
+global min_altitudes
+global t_min_altitudes
+if (t > t_min_altitudes(end))
+    min_altitudes(end+1) = min(min_altitudes(end), altitude);
+    t_min_altitudes(end+1) = t;
+end
+
 % Density
 if mod(floor(t), 5) == 0
-    rho = density_calc(t, initial_time, position);
+    rho = density_calc(t, latitude, longitude, altitude);
     set_global_value(rho);
 end
 
