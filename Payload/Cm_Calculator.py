@@ -13,40 +13,40 @@ C_m = C_m0 / (8.5E8 * Lambda)**(1/4)
 
 ### Independent variables ###
 z = 250000
-d_s = 0.11
-delta_V_needed = 214
+print(z)
+d_s = 0.1 + 2 * (z * np.tan((0.0103) * (0.000004848136811095)))
+print(d_s)
+delta_V_needed = 52.08736574
 
 # Dependent variables ###
 D_eff = a*M_squared*Lambda*z / (d_s)
 # fluence_at_debris = 4*E_p*(D_eff**2)*T_eff / (np.pi * (M_squared**2)*(a**2)*(Lambda**2)*(z**2))
-print(C_m)
+#print(C_m)
 
 E = fluence_opt / (4*(D_eff**2)*T_eff / (np.pi * (M_squared**2)*(a**2)*(Lambda**2)*(z**2)))
 print('Ep =', E)
 
 print('The optimum fluence is', fluence_opt)
-#print('The coupling coefficient is', Cm, 'N/W')
-print('D_eff is', D_eff, 'm')
+print('The coupling coefficient is', C_m, 'N/W')
+#print('D_eff is', D_eff, 'm')
 
 
 ### Finding the optimum E and f ###
 
 ### Constants ###
 tt_dv = 50
+print(tt_dv)
 
-
-AMR = 0.076
+AMR = 0.07946
 a_deb = delta_V_needed/tt_dv
 f = a_deb/(fluence_opt*AMR*C_m)
 output_power = f * E
-
-
 
 efficiency_conversion = 0.53 * 0.7 * 0.7
 
 
 maximum_ablation_angle = 20
-incidence_angle_efficiency = np.cos(np.pi/180 * maximum_ablation_angle)**(4/3)
+incidence_angle_efficiency = 1 * np.cos(np.pi/180 * maximum_ablation_angle)**(4/3)
 input_power = output_power/(efficiency_conversion*incidence_angle_efficiency)
 
 # power_limit = 20000
@@ -60,7 +60,8 @@ input_power = output_power/(efficiency_conversion*incidence_angle_efficiency)
 
 print('The frequency of the laser is', f, 'Hz')
 print('The time to impart dV is', tt_dv, 's')
-print('The energy in kWh is', input_power*tt_dv/3600000)
+
+#print('The energy in kWh is', input_power*tt_dv/3600000)
 
 #BUDGETS
 m_laser_phipps = 2500 #kg [at 125 kW]
@@ -75,3 +76,4 @@ print('Laser mass: ', m_laser, 'kg')
 print('Mirror mass: ', m_mirror, 'kg')
 print('Total mass: ', m_total, 'kg')
 
+print(delta_V_needed/(AMR))
