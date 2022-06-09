@@ -38,7 +38,7 @@ opts = odeset('RelTol', 1e-12);
 [t1, y1] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A_m, mu, Re, J2, true, false), t_span, y0, opts); % With J2, without drag
 [t2, y2] = ode78(@(t, y) odefunc(t, y, initial_time, Cd, A_m, mu, Re, J2, true, true), t_span, y0, opts); % With J2, with drag
 deltav_stationkeeping = abs(norm(y1(end)) - norm(y2(end)))
-deltav_over_one_year = deltav_stationkeeping * 265 * 24 * 3600 / T
+deltav_over_one_year = deltav_stationkeeping / n_orbits * 365.25 * 24 * 3600 / T
 %}
 
 % Debris decay
