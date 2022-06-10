@@ -22,7 +22,7 @@ C_m = C_m0 / (8.5E8 * Lambda)**(1/4)
 # Range
 z = 250000
 # Spot size (conservative, taken as 2 times the 0.0103 arcsec pointing accuracy * range)
-d_s = 0.1 + 2 * (z * np.tan((0.0103) * (0.000004848136811095)))
+d_s = 0.1 + 2 * (np.abs(z) * np.tan((0.0103) * (0.000004848136811095)))
 # Velocity difference needed to de-orbit a debris particle
 # From 1000 km orbit to 340 km: 174.3957059 m/s
 # From 750 km orbit to 340 km: 111.71768422957393 m/s
