@@ -22,7 +22,7 @@ const mu = 3.986004418e14  # [m3/s2]
 
 # User defined constants
 const h_collision = 789e3  # [m]
-const debris_n = 1000  # number of fragments, change this number for simulation speed
+const debris_n = 40000  # number of fragments, change this number for simulation speed
 const a_collision = R_e + h_collision
 const t0 = 72 * 100 * 60  # 5 days
 const dt = 5
@@ -30,16 +30,16 @@ const distance_sc = 30e3  # [m]
 const target_fraction = 0.5
 const max_dv = 1 # Maximum dV used in gaussian perturbation equations
 const FoV = 38.44 * pi / 180  # [rad]
-const range = 250e3 # [m]
+const range = 300e3 # [m]
 const incidence_angle = 20 * pi / 180 # [rad]
-const ablation_time = 50 # [s]
+const ablation_time = 60 # [s]
 const scan_time = 5 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
-const cooldown_time = min_vis_time + 0 # seconds, should be an integer multiple of dt
+const cooldown_time = 70 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 const fluence = 8500 # [J/m^2]
-const Cm = 9.107e-5 # [-]
-const freq = 59.697 # [Hz]
+const Cm = 9.1078e-5 # [-]
+const freq = 55.79 # [Hz]
 
 
 # Import data
@@ -47,6 +47,7 @@ df = CSV.read("./iridium_cosmos_result.csv", DataFrame; header=1)
 
 # Select data that is necessary and convert to matrix
 df = filter(row -> row.Name .== "Kosmos 2251-Collision-Fragment", df)
+println(length(df[:,1]))
 df = filter(row -> row.d_eq .< 0.1, df)
 df = filter(row -> 0 .< row.e .< 1, df)
 df = filter(row -> (row.a * (1 - row.e) .> (R_e + 200e3)) && (row.a * (1 + row.e) .> (R_e + 200e3)), df) # Filter out all that already have a low enough perigee
@@ -464,5 +465,5 @@ println("Dv computed directly from fluence, cm, f and A/M")
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
-savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+# p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
+# savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
