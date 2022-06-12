@@ -196,7 +196,7 @@
 \begin{longtable}{p{0.5cm}p{15cm}}
     \caption{Mitigation of technical risks.}\\
     \toprule
-    \multicolumn{1}{c}{\textbf{Risk NB}}& \textbf{Description \& Mitigation Plan} \\
+    \textbf{Risk NB}& \textbf{Description \& Mitigation Plan} \\
     \midrule
     3 & \textbf{Operations cost overruns:} all operations risks depend on the ability of the system to remove the debris within a given amount of time (depending on the time allocated to the primary and secondary mission). This can be carefully evaluated through simulations (V\&V of the laser system to evaluate its capability to remove the 50\% of the debris between 1 and 10 cm in the orbit of choice (SS-TL-STK-US-REQ-STB-002). Additional sources of risk linked to operations cost and schedule overruns are directly related to Project Management and Systems Engineering (PM\&SE). However, despite good PM\&SE practices, most space projects fail to meet the planned budgets and schedules due to the common thinking that those projects are “too big to fail” and that the technological and scientific outcomes outweigh the delays and cost overruns \footnote{URL: \url{https://spectrum.ieee.org/gao-warns-of-deteriorating-costs-and-schedules-in-nasas-major-project-portfolio} [Accessed on 21-05-2022]}. However, the design team is very aware of the budget and schedule limitations, and all available practices will be put in place to ensure that the Space Sweeper mission is a successful, within the cost and schedule constraints. \newline \makecell{
     \textit{Likelihood:} Possible $\rightarrow$ Unlikely |
