@@ -35,11 +35,12 @@ const incidence_angle = 20 * pi / 180 # [rad]
 const ablation_time = 60 # [s]
 const scan_time = 5 # [s]
 const min_vis_time = scan_time + ablation_time # [s]
-const cooldown_time = 70 # seconds, should be an integer multiple of dt
+const cooldown_time = min_vis_time + 70 # seconds, should be an integer multiple of dt
 const view_angles = (45, 45) # Viewing angles in azimuth and altitude
 const fluence = 8500 # [J/m^2]
 const Cm = 9.1078e-5 # [-]
 const freq = 55.79 # [Hz]
+const min_perigee = 340e3 # [m]
 
 
 # Import data
@@ -50,7 +51,7 @@ df = filter(row -> row.Name .== "Kosmos 2251-Collision-Fragment", df)
 println(length(df[:,1]))
 df = filter(row -> row.d_eq .< 0.1, df)
 df = filter(row -> 0 .< row.e .< 1, df)
-df = filter(row -> (row.a * (1 - row.e) .> (R_e + 200e3)) && (row.a * (1 + row.e) .> (R_e + 200e3)), df) # Filter out all that already have a low enough perigee
+df = filter(row -> (row.a * (1 - row.e) .> (R_e + min_perigee)) && (row.a * (1 + row.e) .> (R_e + min_perigee)), df) # Filter out all that already have a low enough perigee
 debris_kepler = Matrix(select(df, ["a", "e", "i", "long_asc", "arg_peri", "mean_anom", "ID"])) # ID is used as an additional column to store true anomaly
 debris_dims = Matrix(select(df, ["M", "A_M"]))
 
@@ -367,7 +368,7 @@ function run_sim(;plotResults=true)
                         # println("Current True Anomaly: ", round(curr_true_anom, digits=0),"[deg], Current alt: ", round(curr_alt/1000, digits=2), "[km]")
                         # println("Old perigree alt: ", round(prev_perigee_alt/1000, digits=2), "[km], New perigee alt: ", round(new_perigee_alt/1000, digits=2), "[km]")
                         # println("Old apogree alt: ", round(prev_apogee_alt/1000, digits=2), "[km], New apogee alt: ", round(new_apogee_alt/1000, digits=2), "[km]")
-                        @inbounds debris_removed[i,1] = (new_perigee_alt < 200e3) || (new_apogee_alt < 200e3) # Mark object as removed if perigee is now below 200 km
+                        @inbounds debris_removed[i,1] = (new_perigee_alt < min_perigee) || (new_apogee_alt < min_perigee) # Mark object as removed if perigee is now below 200 km
                         @inbounds debris_counter += debris_removed[i,1]
                         @inbounds increased_a_counter += (debris_semimajor_original[i] > a_collision)
                         println("Debris seen: ", debris_removed[i,2], ", Debris removed: ", debris_removed[i,1])
@@ -465,5 +466,5 @@ println("Dv computed directly from fluence, cm, f and A/M")
 println("For scan time equal to ", scan_time, " s and FoV of ", FoV * 180 / pi, " deg:")
 println("The time required for 50% is equal to ", round(time_required / (24 * 3600), digits=3), "days.")
 println("Of which ", round(perc_increased_a, digits=3), "% have an increased semi-major axis.")
-# p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
-# savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
+p = plot(times ./ (3600 * 24), perc .* 100, xlabel="Time [days]", ylabel="Removal fraction [%]", label=false)
+savefig(p, string(tot_debris_n) * "-DebrisRemovalTime" * "-Cd" * string(cooldown_time) * "-fov" * string(round(FoV * 180 / pi)) * "-i" * string(round(incidence_angle * 180 / pi)) * "-r" * string(range) * "-mint" * string(min_vis_time) * ".pdf")
