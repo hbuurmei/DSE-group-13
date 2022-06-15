@@ -46,10 +46,10 @@ for category in total['category'].drop_duplicates():
     txt += r'    \midrule' + '\n' + r'    \midrule' + '\n' + r'    \multicolumn{3}{c}{\textit{' + \
            str(category) + r'}} \\' + '\n' + r'    \midrule' + '\n'
     for idx, risk in total[total['category'] == str(category)].iterrows():
-        txt += r'    \midrule' + '\n    ' + str(risk['number']) + ' & ' + risk['id'] + \
-               r' & \textbf{' + risk['title'] + '} ' + risk['description'] + r' \newline \makecell{' + \
-               '\n' + r'    \textit{Likelihood:} ' + risk['L1'] + ' |' + '\n' + \
-               r'    \textit{Consequence:} ' + risk['C1'] + r'} \\' + '\n'
+        txt += r'    \midrule' + '\n    ' + str(risk['number']) + ' & ' + str(risk['id']) + \
+               r' & \textbf{' + str(risk['title']) + '} ' + str(risk['description']) + r' \newline \makecell{' + \
+               '\n' + r'    \textit{Likelihood:} ' + str(risk['L1']) + ' |' + '\n' + \
+               r'    \textit{Consequence:} ' + str(risk['C1']) + r'} \\' + '\n'
 
 txt += r'    \bottomrule' + '\n' + r'    \label{tab:technical_risks}' + '\n' + r'\end{longtable}' + '\n' + \
        r'\end{center}' + '\n\n'
@@ -76,18 +76,23 @@ for likelihood in ['Very Likely', 'Likely', 'Possible', 'Unlikely', 'Very Unlike
 txt += r'\end{tabular}' + '\n' + r'}' + '\n' + r'\end{table}' + '\n' + \
        r'\renewcommand{\arraystretch}{1} %stretches row height' + '\n'
 
+txt += r'\section{Mitigation Strategies}\label{sec:mitigation}'+ '\n' + \
+       r'The risks in the top right corner of the risk map, with the colours orange or red, ' \
+       r'are critical, and should be mitigated. These mitigation strategies, as well as their impact on the likelihood ' \
+       r'and consequence, are described in \autoref{tab:risk_mitigation}. The risk map post-mitigation is shown in ' \
+       r'\autoref{tab:risk_post_mitigation}.' + '\n'
 # ----------------------------- Mitigation -----------------------------------
 txt += r'\begin{center}' + '\n' + r'\begin{longtable}{p{0.5cm}p{15cm}}' + '\n' + \
        r'    \caption{Mitigation of technical risks.}\\' + '\n' + r'    \toprule' + '\n' + \
        r'    \textbf{Risk NB}& \textbf{Description \& Mitigation Plan} \\' + '\n'
 
-mitigated_risks = total[total['mitigation'] != 'no']
+mitigated_risks = total[total['mitigation'] == 'yes']
 categories = mitigated_risks['category'].drop_duplicates()
 for category in mitigated_risks['category'].drop_duplicates():
     for idx, risk in mitigated_risks[mitigated_risks['category'] == str(category)].iterrows():
-        txt += r'    \midrule' + '\n    ' + str(risk['number']) + r' & \textbf{' + risk['title'] + r':} ' + str(risk['plan']) + r' \newline \makecell{' + \
-               '\n' + r'    \textit{Likelihood:} ' + risk['L1'] + r' $\rightarrow$ ' + risk['L2'] + r' |' + '\n' + \
-               r'    \textit{Consequence:} ' + risk['C1'] + r' $\rightarrow$ ' + risk['C2'] + r'} \\' + '\n'
+        txt += r'    \midrule' + '\n    ' + str(risk['number']) + r' & \textbf{' + str(risk['title']) + r':} ' + str(risk['plan']) + r' \newline \makecell{' + \
+               '\n' + r'    \textit{Likelihood:} ' + str(risk['L1']) + r' $\rightarrow$ ' + str(risk['L2']) + r' |' + '\n' + \
+               r'    \textit{Consequence:} ' + str(risk['C1']) + r' $\rightarrow$ ' + str(risk['C2']) + r'} \\' + '\n'
 
 txt += r'    \bottomrule' + '\n' + r'    \label{tab:risk_mitigation}' + '\n' + r'\end{longtable}' + '\n' + \
        r'\end{center}' + '\n\n'
